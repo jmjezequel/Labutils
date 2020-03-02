@@ -446,26 +446,27 @@ class ITAStatus(Status):
     def isITA(self):
         return True
 
-STATUSTYPES={
-        CT:Status,
-        CDI:Status,
-        DOCTORANT:PhDStatus,
-        STAGIAIRE:Status,
-        POSTDOC:Status,
-        CHCONTRACTUEL:Status,
-        CHINVITE:Status,
-        CHASSOCIE:Status,
-        ECC:Status,
+
+STATUSTYPES = {
         'PREM':Emeritus,
         'DREM':Emeritus,
         'PR':PermResearcher,
         'DR':PermResearcher,
         'MCF':PermResearcher,
         'CR':PermResearcher,
+        POSTDOC:Status,
+        CHCONTRACTUEL:Status,
+        CHINVITE:Status,
+        CHASSOCIE:Status,
+        DOCTORANT:PhDStatus,
+        CDI:Status,
+        ECC:Status,
         'IR':ITAStatus,
         'IE':ITAStatus,
         'AI':ITAStatus,
         'TCH':ITAStatus,
-        'AJT':ITAStatus
-    }
+        'AJT':ITAStatus,
+        CT:Status,
+        STAGIAIRE: Status
+}
 
