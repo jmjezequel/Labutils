@@ -1,5 +1,6 @@
 import json
 import requests
+import logging
 import sys
 import datetime
 import os
@@ -8,141 +9,21 @@ import time
 import codecs
 from pathlib import Path
 import tempfile
+from libhal.publication import Publication,getPublicationFrom
 
-fields = "halId_s,docType_s,invitedCommunication_s,peerReviewing_s,conferenceTitle_s,journalTitle_s,bookTitle_s,audience_s,authFullName_s,title_s,producedDateY_i,rteamStructAcronym_s,deptStructAcronym_s,labStructAcronym_s"
-
-def getSetFrom(iterable):
-    if iterable == None:
-        return set()
-    return set(iterable)
+fields = "halId_s,instStructCountry_s,docType_s,invitedCommunication_s,peerReviewing_s,conferenceTitle_s,journalTitle_s,bookTitle_s,audience_s,authFullName_s,title_s,publicationDateY_i,publicationDateM_i,publisher_s,rteamStructAcronym_s,deptStructAcronym_s,labStructAcronym_s"
+# label_bibtex yields a full bibtex ref
+# change producedDateY_i by publicationDateY_i and publicationDateM_i
+# country_s yields the country where the pub took place
 
 
-def getAbbrevAuthorName(fullname,sep=' '):
-    words = fullname.split(sep)
-    firstNames = words[0].split('-')
-    if len(firstNames)==1: 
-        result = firstNames[0][0]
-    else:  #deal with composed first names
-        result = '.-'.join(w[0] for w in firstNames)
-    result += '. '
-    n = len(words)
-    for i in range(1,n-1): # abbrev. middle names
-        if words[i].lower() in ['de','del','le','van','von']:
-            result += words[i]+' '
-            i += 1
-        else:
-            result += words[i][0]+'. '
-    if n > 1:
-        result += words[n-1] # last name if any
-    return result        
-
-class Publication:
-    ''' facade object for the dictionary returned by getpub from Hal'''
-    def __init__(self, pubdict):
-        self.pub = pubdict
-        self._halId = self.pub.get("halId_s")
-        self._teams = getSetFrom(self.pub.get("rteamStructAcronym_s"))
-        self._depts = getSetFrom(self.pub.get("deptStructAcronym_s"))
-        self._labs = getSetFrom(self.pub.get("labStructAcronym_s"))
-        
-    def getDate(self):
-        return self.pub.get("producedDateY_i")
-
-    def getHalId(self):
-        return self._halId
-
-    def getTeams(self):
-        return self._teams
-
-    def getDepts(self):
-        return self._depts
-
-    def getLabs(self):
-        return self._labs
-
-    def getAuthors(self):
-        return self.pub.get("authFullName_s")
-
-    def getTitle(self):
-        return self.pub.get("title_s")[0]
-
-    def getVenue(self):
-        if self.isJournal() or self.isOutreach():
-            return self.pub.get("journalTitle_s")
-        if self.isConference():
-            return self.pub.get("conferenceTitle_s")
-        if self.isBookChapter():
-            return self.pub.get("bookTitle_s")
-        return None
-        
-    def isInternational(self):
-        audience = self.pub.get("audience_s")
-        return audience == "2"
     
-    def isInvited(self):
-        invited = self.pub.get("invitedCommunication_s")
-        return invited == '1' 
-    
-    def isPeerReviewing(self):
-        peer = self.pub.get("peerReviewing_s")
-        return peer == '1' 
-    
-    def isJournal(self):
-        return self.pub.get("docType_s") == "ART" and self.isPeerReviewing()
-    
-    def isOutreach(self):
-        return self.pub.get("docType_s") == "ART" and not self.isPeerReviewing()
-    
-    def isConference(self):
-        return self.pub.get("docType_s") == "COMM" and self.isPeerReviewing()
-    
-    def isBookChapter(self):
-        return self.pub.get("docType_s") == "COUV"
-
-    def isBook(self):
-        return self.pub.get("docType_s") == "OUV"
-
-    def isEditedBook(self):
-        return self.pub.get("docType_s") == "DOUV"
-    
-    def getAbbrevAuthors(self):
-        authors = self.getAuthors()
-        nb = len(authors)
-        if nb==0:
-            return ""
-#         if nb==1: # only useful when puttin a 'and' before the last author
-#             return getAbbrevAuthorName(authors[0])
-        return ', '.join(getAbbrevAuthorName(a) for a in authors)
-            
-    def yieldAsBibRef(self):
-        yield self.getAbbrevAuthors()+'. '
-        yield self.getTitle()
-        v = self.getVenue()
-        if v != None:
-            yield '. '+v
-        yield ', '+str(self.getDate())+'.'
-        
-    def print(self, wfile):
-        print (self.asString().encode('UTF-8'),file=wfile)
-        # print("--------", file = wfile)
-        # for a in self.pub:
-        #     print(a+"="+str(self.pub.get(a)), file = wfile)
-
- 
-    def asString(self):
-        return ''.join(self.yieldAsBibRef())
-#         result = "--------\n"
-#         for a in self.pub:
-#             result = result+a+"="+str(self.pub.get(a))+'\n'
-#         return result
-
-    def printAsJson(self, wfile):
-        print(self.pub.encode("utf-8"), wfile)
- 
 class PubSet:
     '''stores a set of publications indexed by their HalId'''
     def __init__(self):
         self.pubs = dict() # where the key is the HalId
+
+    def __iter__(self): self.pubs.__iter__()
 
     def addPub(self, pub):
         self.pubs[pub.getHalId()] = pub
@@ -167,7 +48,12 @@ class PubSet:
         # for k in self.pubs:
         #     self.pubs[k].print(wfile)
 
+    def writePubList(self,writer,condition):
+        for pub in filter(condition,self.pubs.values()):
+            writer.writeln(pub)
+
     def asString(self, condition, startingNumber=1):
+        '''Deprecated'''
 #        result = "--------\n" # + str(self.date)+'\n'
         result = ""
         count = startingNumber
@@ -185,12 +71,12 @@ class PubRecord:
         self.slices = dict() # dict(date, PubSet)
 
     def addPub(self, pub):
-        date = pub.getDate()
+        date = pub.getYear()
         slice = self.slices.get(date)
         if (slice == None):
             slice = PubSet()
             self.slices[date] = slice
-        # log("===> adding ",pub.getHalId()," (",date,") publication into ",self.name)
+        # loggin.info("===> adding ",pub.getHalId()," (",date,") publication into ",self.name)
         slice.addPub(pub)
 
     def getName(self):
@@ -224,7 +110,12 @@ class PubRecord:
                 self.slices[date] = pubs
             pubs.merge(otherPubRecord.getPubs(date))
 
+    def writePubList(self,writer,condition):
+        for k in sorted(self.slices.keys()):
+            self.slices[k].writePubList(writer,condition)
+        
     def asString(self, filter, startingNumber=1):
+        '''Deprecated'''
         # result = "### "+self.name+'\n'
         result = ""
         count = startingNumber
@@ -233,11 +124,15 @@ class PubRecord:
             result = result+bloc
         return (result, count)
     
-def filterTrue(pub):
+def alwaysTrue(* args):
     return True
 
-def filterByVenue(pub,venue):
-    return isVenueNameMatch(pub.getVenue(),venue)
+def filterByVenue(pub,kind,venue):
+    if kind=='journal' and pub.isJournal():
+        return isVenueNameMatch(pub.getVenue(),venue)
+    if kind=='conference' and pub.isConference():
+        return isVenueNameMatch(pub.getVenue(),venue)
+    return False
 
 def filterPubByVenues(pub, journals, conferences):
         if pub.isJournal() and isVenueNameMatchIn(pub.getVenue(), journals):
@@ -245,6 +140,23 @@ def filterPubByVenues(pub, journals, conferences):
         if pub.isConference() and isVenueNameMatchIn(pub.getVenue(), conferences):
             return True
         return False
+
+def isVenueNameMatchIn(read,venueList):
+    if read == None:
+        return False
+    for venue in venueList:
+        if isVenueNameMatch(read,venue):
+            return True
+    return False
+
+def isVenueNameMatch(read,wanted):
+    if read == None:
+        return False
+    if wanted == '*':
+        return True
+    r = read.replace("Int.", "International").replace("Conf.", "Conference").replace("Trans.", "Transactions").replace("&","and").replace(",","").casefold()
+    w = wanted.replace("&","and").casefold()
+    return r.find(w) >=0
 
 class ProgressionReporter:
     '''To be subclassed if use of a GUI to show progress bar'''
@@ -254,12 +166,13 @@ class ProgressionReporter:
         return True
     def terminate(self):
         pass
-    def message(self,txt):
-        log(txt)
+    def message(self,* args):
+        logging.info(* args)
 
 class StructPubRecords:
-    '''store PubRecords for a set of structs over a period, with optional defaultPubFilter'''
-    def __init__(self, structList, startYear, endYear, pubFilter=filterTrue):
+    '''store PubRecords for a set of structs over a period'''
+    def __init__(self, structList, startYear, endYear):
+#    result.readByVenues(collection,"conferenceTitle",conferences)):
         self.startYear = startYear
         self.endYear = endYear
         self.structs = dict() # of (structName, PubRecord)
@@ -267,7 +180,6 @@ class StructPubRecords:
             if t != '':
                 self.structs[t] = PubRecord(t)
         self.consolidated = PubRecord("Total") # stores the consolidated consolidated
-        self.defaultPubFilter = pubFilter
         
     def getStructureNumber(self):
         return len(self.structs)
@@ -276,7 +188,7 @@ class StructPubRecords:
         ''' Deprecated '''
         readteams = pub.getTeams()
         if (len(readteams) == 0):
-            log("***WARNING: no identified team for this publication")
+            logging.warning("no identified team for this publication")
             pub.print(sys.stdout)
             return
         for t in readteams:
@@ -284,13 +196,13 @@ class StructPubRecords:
                 self.teams[t].addPub(pub)
                 break
 
-    def readByVenues(self,collection, kind, venues):
-        ''' Deprecated '''
-        log("###Doing: ",venues)
-        dateRange = "["+str(self.startYear)+" TO "+str(self.endYear)+"]"
-        for pubs in getPubByVenues(collection,kind,venues,dateRange):
-            for p in pubs:
-                self.addPublicationByVenue(Publication(p))
+#     def readByVenues(self,collection, kind, venues):
+#         ''' Deprecated '''
+#         loggin.info("###Doing: ",venues)
+#         dateRange = "["+str(self.startYear)+" TO "+str(self.endYear)+"]"
+#         for pubs in getPubByVenues(collection,kind,venues,dateRange):
+#             for p in pubs:
+#                 self.addPublicationByVenue(getPublicationFrom(p))
 
     def readByStructures(self, collection, structureKind, progresscallback=ProgressionReporter()):
         # dateRange = "["+str(self.startYear)+" TO "+str(self.endYear)+"]"
@@ -302,7 +214,7 @@ class StructPubRecords:
                 structPubs = getPubByStructureKind(collection,structureKind,t,year)
                 if not progresscallback.step():
                     # computation should stop here
-                    log("Aborting readByStructures")
+                    logging.info("Aborting readByStructures")
                     return
                 progresscallback.message(t+" publications for "+str(year)+": got "+str(len(structPubs)))
                 
@@ -315,29 +227,34 @@ class StructPubRecords:
 
     def addPublicationByStructure(self, struct, halpublist):
         for pub in halpublist:
-            struct.addPub(Publication(pub)) 
+            struct.addPub(getPublicationFrom(pub)) 
 
-    def getStructScore(self, struct, date,filter=None):
+    def getPubRecord(self,struct=None):
+        if struct==None:
+            return self.consolidated
+        return self.structs[struct]
+    
+    def getStructScore(self, struct, date, condition):
         ''' returns struct's number of publications matching filter for date'''
-        return self.structs[struct].getScoreFor(date,filter if filter != None else self.defaultPubFilter)
+        return self.structs[struct].getScoreFor(date,condition)
 
-    def getTotal(self, struct=None, filter=filterTrue):
+    def getTotal(self, struct=None, condition=alwaysTrue):
         ''' returns total matching filter'''
         if struct==None:
-            return self.getConsolidatedTotal(filter)
-        return self.getStructTotal(struct,filter)
+            return self.getConsolidatedTotal(condition)
+        return self.getStructTotal(struct,condition)
 
-    def getStructTotal(self, struct,filter=None):
+    def getStructTotal(self, struct,condition):
         ''' returns struct's total of publications matching filter'''
-        return self.structs[struct].getTotalScore(filter if filter != None else self.defaultPubFilter)
+        return self.structs[struct].getTotalScore(condition)
 
-    def getConsolidatedScore(self,date,filter=None):
+    def getConsolidatedScore(self,date,condition):
        ''' returns consolidated number of publications matching filter for date'''
-       return self.consolidated.getScoreFor(date,filter if filter != None else self.defaultPubFilter)
+       return self.consolidated.getScoreFor(date,condition)
 
-    def getConsolidatedTotal(self,filter=None):
+    def getConsolidatedTotal(self,condition):
         ''' returns consolidated total number of publications matching filter'''
-        return self.consolidated.getTotalScore(filter if filter != None else self.defaultPubFilter)
+        return self.consolidated.getTotalScore(condition)
 
     def yieldDates(self):
         yield "Struct"
@@ -345,17 +262,17 @@ class StructPubRecords:
             yield str(d)
         yield "Total"
 
-    def yieldScores(self, struct):
+    def yieldScores(self, struct, condition):
         yield struct
         for d in range(self.startYear,self.endYear+1):
-            yield str(self.getStructScore(struct, d))
-        yield str(self.getStructTotal(struct))
+            yield str(self.getStructScore(struct, d, condition))
+        yield str(self.getStructTotal(struct, condition))
 
-    def yieldConsolidatedScore(self):
+    def yieldConsolidatedScore(self,condition):
         yield "Total"
         for d in range(self.startYear,self.endYear+1):
-            yield str(self.getConsolidatedScore(d))
-        yield str(self.getConsolidatedTotal())
+            yield str(self.getConsolidatedScore(d,condition))
+        yield str(self.getConsolidatedTotal(condition))
 
 
     def yieldStructureNames(self):
@@ -363,64 +280,45 @@ class StructPubRecords:
         for s in self.structs:
             yield s
         
-    def yieldScoreForVenue(self, venueName):
+    def writeScorePerYear(self, writer, journals, conferences):
+        condition = lambda pub: filterPubByVenues(pub,journals,conferences)
+        writer.openSheet("ScorePerYear",'table')
+        writer.writeTitle(self.yieldDates())
+        for t in self.structs.keys():
+            writer.writeln(self.yieldScores(t,condition))
+        writer.writeln(self.yieldConsolidatedScore(condition))
+        writer.closeSheet()
+
+    def yieldScoreForVenue(self, venueKind, venueName):
         ''' yield how many publications by struct do match venueName'''
         yield venueName
         for s in self.structs:
-            yield str(self.structs[s].getTotalScore(lambda pub: filterByVenue(pub,venueName)))
+            yield str(self.structs[s].getTotalScore(lambda pub: filterByVenue(pub,venueKind,venueName)))
 
-
-    def printAsCSV(self,wfile):
-#         print (*(l for l in self.yieldDates()),sep=';',file=wfile)
-#         for t in self.structs.keys():
-#             print (*(n for n in self.yieldScores(t)),sep=';',file=wfile)
-#        print (*(n for n in self.yieldConsolidatedScore()),sep=';',file=wfile)
-        for l in self.getAsTabularData(';'):
-            print(l,file=wfile)
-      
-    def getAsTabularData(self, sep='\t'):
-        yield sep.join(self.yieldDates())
-        for t in self.structs.keys():
-            yield sep.join(self.yieldScores(t))
-        yield sep.join(self.yieldConsolidatedScore())
+    def writeBreakdownPerVenue(self, writer, journals, conferences):
+        writer.openSheet("BreakdownPerVenue",'table')
+        writer.writeTitle(self.yieldStructureNames())
+        for venue in journals:
+            writer.writeln(self.yieldScoreForVenue('journal',venue))
+        for venue in conferences:
+            writer.writeln(self.yieldScoreForVenue('conference',venue))
+        writer.closeSheet()
               
-    def printAsTxt(self, wfile):
-        for l, count in self.getAsTxt():
-            print(l,wfile)
-      
-    def getAsTxt(self, filter=None):
-        if filter==None:
-            filter = self.defaultPubFilter
-        for t in self.structs.keys():
-            yield self.structs[t].asString(filter)
-      
-    def save(self,basedir):
-        os.makedirs(basedir, exist_ok=True)
-        scorefilename = basedir+"/score.csv"
-#        bdfilename = basedir+"/breakdown.csv"
-        txtfilename = basedir+"/publications.txt"
-        self.printAsCSV(open(scorefilename, 'w+'))
-#        self.printScorePerVenueAsCSV(open(bdfilename, 'w+'), journals, conferences)
-        self.printAsTxt(open(txtfilename, 'w+', encoding='utf-8'))
-
-    def yieldScorePerVenue(self,journals,conferences,sep='\t'):
-        yield sep.join(self.yieldStructureNames())
-        for v in journals:
-            yield sep.join(self.yieldScoreForVenue(v))
-        for v in conferences:
-            yield sep.join(self.yieldScoreForVenue(v))
-      
-
-    def printScorePerVenueAsCSV(self,wfile,journals,conferences):
-#         print (*(n for n in self.yieldStructureNames()),sep=';',file=wfile)
-#         for v in journals:
-#             print (*(n for n in self.yieldScorePerVenue(v)),sep=';',file=wfile)
-#         for v in conferences:
-#             print (*(n for n in self.yieldScorePerVenue(v)),sep=';',file=wfile)
-        for l in self.yieldScorePerVenue(journals,conferences,';'):
-            print(l,file=wfile)
-     
-
+    def writePubList(self,writer, journals, conferences):
+        condition = lambda pub: filterPubByVenues(pub,journals,conferences)
+        for pubRecord in self.structs.values():
+            writer.openSheet(pubRecord.name)
+            pubRecord.writePubList(writer,condition)
+            writer.closeSheet()
+    
+    def save(self, name, writer, journals, conferences, *args): #arg is a function of self
+        ''' write results for eg writePubList, writeScorePerVenue, writeScorePerYear'''
+        writer.open(name)
+        if len(args) == 0: # save all
+            args = (self.writePubList,self.writeBreakdownPerVenue,self.writeScorePerYear)
+        for f in args:
+            f(writer,journals,conferences)
+        writer.close()
 
 
 # return a list of publications, each in the form of a dict
@@ -429,25 +327,26 @@ def getPub(collection, dateRange, parameters):
     if collection != None and collection != '':
         url = url + collection+"/"
     url = url+"?"+parameters+"&fq=producedDateY_i:"+str(dateRange)+"&rows=9999&wt=json&fl="+fields
-    log(url)
+    logging.info(url)
     response = requests.get(url, timeout=20)
     response.raise_for_status()# If the response was successful, no Exception will be raised
     return json.loads(response.text).get("response").get("docs")
 
 # return a list of publications, each in the form of a dict
 # implement cache management
-def getPubByStructureKind(collection, structkind, structAccronym, date):
+def getPubByStructureKind(collection, structkind, structAccronym, startYear, endYear=None):
+    date = startYear if endYear is None else "[" + str(startYear) + " TO " + str(endYear) + "]"
     if isInCache(structAccronym,date):
         structPubs = getPubFromCache(structAccronym,date)
         # time.sleep(1)
     else:
         structPubs = getPub(collection, date, "q="+structkind+"_t:"+structAccronym)
-        writeHalStructPubs(structAccronym,date,structPubs) # write to cache
+        writeHalStructPubs(structAccronym,date,structPubs) # writePubList to cache
     return structPubs
 
 # e.g. collection=IRISA, author=jezequel,jean-marc 
-def getPubByAuthor(collection, author, date):
-    return getPubByStructureKind(collection, "authFullName", author, date)
+def getPubByAuthor(collection, author, startYear, endYear=None):
+    return getPubByStructureKind(collection, "authFullName", author, startYear, endYear)
 
 # e.g. collection=IRISA, teamName=diverse date="2012 TO 2019"
 def getPubByTeam(collection, teamName, date):
@@ -471,7 +370,7 @@ def getPubByVenue(collection, kind, venue, date):
        if isVenueNameMatch(p.get(kind+"_s"),venue):
             yield p
        else:
-            log("*** ",p.get(kind+"_s")," does not match: ",venue)
+            logging.warning("*** ",p.get(kind+"_s")," does not match: ",venue)
 
 def writeHalStructPubs(structName, year, halStructPubs):
    with open(getCachedFilename(structName,year), 'w') as outfile:  
@@ -487,22 +386,6 @@ def getCachedFilename(structName, year):
 def isInCache(structName, year):
     return os.path.exists(getCachedFilename(structName,year))
 
-def isVenueNameMatchIn(read,venueList):
-    if read == None:
-        return False
-    for venue in venueList:
-        if isVenueNameMatch(read,venue):
-            return True
-    return False
-
-def isVenueNameMatch(read,wanted):
-    if read == None:
-        return False
-    if wanted == '*':
-        return True
-    r = read.replace("Int.", "International").replace("Conf.", "Conference").replace("Trans.", "Transactions").replace("&","and").replace(",","").casefold()
-    w = wanted.replace("&","and").casefold()
-    return r.find(w) >=0
 
 def getPubByVenues(collection, kind, venues, date):
     for v in venues:
@@ -515,10 +398,10 @@ def getStructPubRecordsFromJson(jsonArgs, progresscallback):
     collection = jsonArgs.get("collection",'')
     structureKind = jsonArgs.get("structureKind","rteamStructAcronym")
     teams = jsonArgs.get("teams")
-    conferences = jsonArgs.get("conferences",[])
-    journals = jsonArgs.get("journals",[])
+#     conferencesOnlyFrom = jsonArgs.get("conferences")
+#     journalsOnlyFrom = jsonArgs.get("journals")
 
-    result = StructPubRecords(teams, startYear, endYear, lambda pub: filterPubByVenues(pub, journals, conferences))
+    result = StructPubRecords(teams, startYear, endYear)
 #    result.readByVenues(collection,"conferenceTitle",conferences)
 #    result.readByVenues(collection,"journalTitle",journals)
     result.readByStructures(collection,structureKind,progresscallback)
@@ -538,24 +421,37 @@ def getBaseDir(filename):
 
 halcachedir = tempfile.gettempdir()+'/halcache'
 os.makedirs(halcachedir, exist_ok=True)
-logfile = open(halcachedir+"/hal.log",'w+', encoding='utf-8')
+# logfile = open(halcachedir+"/hal.log",'w', encoding='utf-8')
+# logger = logging.getLogger(__name__)
 
-def log(* args):
-    '''print a log both on stdout and on the logfile'''
-    msg = ''.join(str(x) for x in args)
-    print(msg)
-    print(msg,file=logfile)
+# def log(* args):
+#     '''print a log both on stdout and on the logfile'''
+#     msg = ' '.join(str(x) for x in args)
+#     print(msg)
+#     print(msg,file=logfile)
     
 def clearCache():
     for path in Path(halcachedir).glob('*.json'):
         path.unlink()
 
-
-
+def setuplog(logfilename=None):
+    if logfilename == None:
+        logfilename = halcachedir+"/hal.log"
+    logging.root.handlers = []
+    logging.basicConfig(
+        #level=logging.INFO,
+        format="[%(levelname)s] %(message)s",
+        handlers=[
+            logging.FileHandler(logfilename,mode='w', encoding='utf-8'),
+            logging.StreamHandler(sys.stdout)
+            ]
+        )
+    
 def main():
     jsonfilename = sys.argv[1]
     dirname = getBaseDir(jsonfilename)
 
+    setuplog()
     f = open(jsonfilename)
     args = json.load(f)
     f.close()
