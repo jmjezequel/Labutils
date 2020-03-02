@@ -5,7 +5,7 @@ from lab.lab import Lab, SubStructure
 from reporting.utils import ratio, dateIsWithin, Report
 
 class DeptStats(Report):
-    def __init__(self, lab: Lab, startDate: datetime, endDate: datetime, endContract: datetime):
+    def __init__(self, lab: Lab, startDate: datetime, endDate: datetime):
         super().__init__(lab,startDate,endDate)
 
         self.deptYearlyProdLines = [

@@ -27,16 +27,16 @@ class EvalHCERES(Report):
 
         self.ProdLines = {
             18 :("1. Articles",),
-            19 :("Scientific articles (total number)", self. self.tpubs, lambda p: p.isJournal()),
+            19 :("Scientific articles (total number)", self.tpubs, lambda p: p.isJournal()),
             28 :("2- Books",),
-            29 :("Monographs, critical editions, translations (total number)", self. self.tpubs, lambda p: p.isBook()),
-            31 :("Management and coordination of scientific books", self. self.tpubs, lambda p: p.isEditedBook()),
-            32 :("... in English or another foreign language", self. self.tpubs, lambda p: p.isEditedBook() and p.isInternationalAudience()),
-            33 :("Book chapters (total number)", self. self.tpubs, lambda p: p.isBookChapter()),
-            34 :("... chapters in English or another foreign language", self. self.tpubs, lambda p: p.isBookChapter() and p.isInternationalAudience()),
+            29 :("Monographs, critical editions, translations (total number)", self.tpubs, lambda p: p.isBook()),
+            31 :("Management and coordination of scientific books", self.tpubs, lambda p: p.isEditedBook()),
+            32 :("... in English or another foreign language", self.tpubs, lambda p: p.isEditedBook() and p.isInternationalAudience()),
+            33 :("Book chapters (total number)", self.tpubs, lambda p: p.isBookChapter()),
+            34 :("... chapters in English or another foreign language", self.tpubs, lambda p: p.isBookChapter() and p.isInternationalAudience()),
             36 :("3- Production in conferences / congresses and research seminars",),
-            38 :("Articles published in conference proceedings ", self. self.tpubs, lambda p: p.isConference()),
-            39 :("Other products presented in symposia", self. self.tpubs, lambda p: p.isInvited()),
+            38 :("Articles published in conference proceedings ", self.tpubs, lambda p: p.isConference()),
+            39 :("Other products presented in symposia", self.tpubs, lambda p: p.isInvited()),
             40 :("4- Electronic tools and products",),
             61 :("International (outside Europe) grants - coordination", self.tcontracts, lambda c: c.isKindWithRole(True, "Programmes internationaux")),
             62 :("International (outside Europe) grants - partnership", self.tcontracts, lambda c: c.isKindWithRole(False, "Programmes internationaux")),
@@ -53,10 +53,10 @@ class EvalHCERES(Report):
             73 :("Grants from foundations and charities - coordination", self.tcontracts, lambda c: c.isKindWithRole(True, "Fondations associations caritatives, Institut Carnot, RTRA, RTRS")),
             74 :("Grants from foundations and charities - partnership", self.tcontracts, lambda c: c.isKindWithRole(False, "Fondations, associations caritatives, Institut Carnot, RTRA, RTRS")),
             75 :("10. Visiting senior scientists and postdoc",),
-            76 :("Post-docs (total number)", self. self.tmembers, lambda m: m.isPostDoc(startDate, endDate)),
-            77 :("Foreign post-docs", self. self.tmembers, lambda m: m.isPostDoc(startDate, endDate) and m.citizenship != 'FRANCE'),
-            78 :("Visiting scientists (total number)", self. self.tmembers, lambda m: m.isVisitingScientist(startDate, endDate)),
-            79 :("Foreign visiting scientists", self. self.tmembers, lambda m: m.isVisitingScientist(startDate, endDate) and m.citizenship != 'FRANCE'),
+            76 :("Post-docs (total number)", self.tmembers, lambda m: m.isPostDoc(startDate, endDate)),
+            77 :("Foreign post-docs", self.tmembers, lambda m: m.isPostDoc(startDate, endDate) and m.citizenship != 'FRANCE'),
+            78 :("Visiting scientists (total number)", self.tmembers, lambda m: m.isVisitingScientist(startDate, endDate)),
+            79 :("Foreign visiting scientists", self.tmembers, lambda m: m.isVisitingScientist(startDate, endDate) and m.citizenship != 'FRANCE'),
             82 :("IUF Members", self.tcontracts, lambda c: c.isIUF()),
             89 :("1- Socio-economic interactions / Patents",),
             90 :("Invention disclosures",),
@@ -70,19 +70,19 @@ class EvalHCERES(Report):
             98 :("Networks and mixed units",),
             99 :("Start-ups",),
             110:("1- Educational outputs",),
-            111:("Books", self. self.tpubs, lambda p: p.isBook() and not p.isInternationalAudience()),
+            111:("Books", self.tpubs, lambda p: p.isBook() and not p.isInternationalAudience()),
             112:("E-learning, MOOCs, multimedia courses, etc.",),
             113:("2- Scientific productions (articles, books, etc.) from theses",),
             114:("Scientific productions (articles, books, etc.) from theses",self.tdocpubs,lambda m: m.gotPhDduring(startDate, endDate)),
             115:("Mean number of publications per student (Biology & Science and technology only)",self.mdocpubs,lambda m: m.gotPhDduring(startDate, endDate)),
             116:("3- Training",),
-            117:("Habilitated (HDR) scientists", self. self.tmembers, lambda m: m.getDateHDR() != "" or m.isRangA(endDate)),
-            118:("HDR obtained during the period", self. self.tmembers, lambda m: dateIsWithin(m.getDateHDR(),startDate, endDate)),
-            119:("PhD students (total number)", self. self.tmembers, lambda m: m.isPhDStudent(startDate, endDate)),
-            120:("PhD students benefiting from a specific doctoral contract, including Cifre", self. self.tmembers, lambda m: m.isPhDStudent(startDate, endDate)),
-            121:("Defended PhDs", self. self.tmembers, lambda m: m.gotPhDduring(startDate, endDate)),
+            117:("Habilitated (HDR) scientists", self.tmembers, lambda m: m.getDateHDR() != "" or m.isRangA(endDate)),
+            118:("HDR obtained during the period", self.tmembers, lambda m: dateIsWithin(m.getDateHDR(),startDate, endDate)),
+            119:("PhD students (total number)", self.tmembers, lambda m: m.isPhDStudent(startDate, endDate)),
+            120:("PhD students benefiting from a specific doctoral contract, including Cifre", self.tmembers, lambda m: m.isPhDStudent(startDate, endDate)),
+            121:("Defended PhDs", self.tmembers, lambda m: m.gotPhDduring(startDate, endDate)),
             122:("Mean PhD duration", self.mduration, lambda m: m.gotPhDduring(startDate, endDate)),
-            123:("Internships (M1, M2)", self. self.tmembers, lambda m: m.isIntern(self.startDate, self.endDate))
+            123:("Internships (M1, M2)", self.tmembers, lambda m: m.isIntern(self.startDate, self.endDate))
             }
 
         self.paritylines = {
@@ -111,13 +111,13 @@ class EvalHCERES(Report):
         for p in d.panels:
             yield p
         # Effectifs Enseignants-chercheurs
-        yield self.lab.getmembersCount(date, date, d, lambda m: m.isEC(date, date))
+        yield self.lab.getMembersCount(date, date, d, lambda m: m.isEC(date, date))
         # Effectifs Chercheurs EPST et cadres scientifiques EPIC permanents
-        yield self.lab.getmembersCount(date, date, d, lambda m: m.isChercheur(date, date))
+        yield self.lab.getMembersCount(date, date, d, lambda m: m.isChercheur(date, date))
         # Effectifs doctorants
-        yield self.lab.getmembersCount(date, date, d, lambda m: m.isPhDStudent(date, date))
+        yield self.lab.getMembersCount(date, date, d, lambda m: m.isPhDStudent(date, date))
         # Effectifs ITA, BIATSS et personnels non-scientifiques des EPIC permanents
-        yield self.lab.getmembersCount(date, date, d, lambda m: m.isITA(date, date))
+        yield self.lab.getMembersCount(date, date, d, lambda m: m.isITA(date, date))
 
 
     def listPersonnels(self,name,writer):
@@ -163,7 +163,7 @@ class EvalHCERES(Report):
         ''' yield data for the Synth sheet. dateFilter(Person,date)->boolean'''
         def yieldTutelles(tutelles):
             for t in tutelles:
-                n = 0 if dateFilter== None else self.lab.countmembersSuchThat(lambda m: m.isEmployeeOf(date, date, t) and dateFilter(m, date))
+                n = 0 if dateFilter== None else self.lab.countMembersSuchThat(lambda m: m.isEmployeeOf(date, date, t) and dateFilter(m, date))
                 yield "" if n == 0 else n
 
         yield label
@@ -173,11 +173,11 @@ class EvalHCERES(Report):
         yield ""
         yield ""
 #        yield ""
-        yield 0 if dateFilter == None else self.lab.countmembersSuchThat(lambda m: dateFilter(m, date))
-        yield 0 if dateFilter == None else self.lab.countmembersSuchThat(lambda m: dateFilter(m, endContract))
+        yield 0 if dateFilter == None else self.lab.countMembersSuchThat(lambda m: dateFilter(m, date))
+        yield 0 if dateFilter == None else self.lab.countMembersSuchThat(lambda m: dateFilter(m, endContract))
         for d in self.lab.depts.values():
-            yield 0 if dateFilter is None else self.lab.getmembersCount(date, date, d, lambda m: dateFilter(m, date))
-            yield 0 if dateFilter is None else self.lab.getmembersCount(date, date, d, lambda m: m.getEndDate() >= endContract and dateFilter(m, endContract))
+            yield 0 if dateFilter is None else self.lab.getMembersCount(date, date, d, lambda m: dateFilter(m, date))
+            yield 0 if dateFilter is None else self.lab.getMembersCount(date, date, d, lambda m: m.getEndDate() >= endContract and dateFilter(m, endContract))
 
     def listProductionsStats(self,name,writer):
         writer.openSheet(name,'table')
@@ -217,9 +217,9 @@ class EvalHCERES(Report):
     def _yieldParityData(self,label,filter,date):
         yield ""
         yield label
-        yield "" if filter is None else self.lab.getmembersCount(date, date, None, filter)
+        yield "" if filter is None else self.lab.getMembersCount(date, date, None, filter)
         for d in self.lab.depts.values():
-            yield "" if filter is None else self.lab.getmembersCount(date, date, d, filter)
+            yield "" if filter is None else self.lab.getMembersCount(date, date, d, filter)
 
     def genSheets(self,writer,name):
         writer.open(name)
@@ -248,9 +248,9 @@ class EvalHCERES(Report):
             ("#IntConfs",publist, lambda p: p.isConference()),
             ("#PhDThesis",publist, lambda p: p.isThesis())
         ]
-        self.deptTables = [
-            ("#ProductionNumbers",self.listProduction)
-        ]
+        # self.deptTables = [
+        #     ("#ProductionNumbers",self.listProduction)
+        # ]
 
         self.prod4annex4 = [
             ("#Visiting",76,79),  # Means extract lines 75-79 of self.ProdLines
@@ -269,8 +269,8 @@ class EvalHCERES(Report):
 #             writer.writeTitle("Other publications",level=3)
 #             target(dept).writePubList(writer,lambda p: p.getHalId() not in mainpub and condition(p))
             writer.closeSheet()
-        for tag,tabfunction in self.deptTables:
-            tabfunction(writer,dept,tag)
+        # for tag,tabfunction in self.deptTables:
+        #     tabfunction(writer,dept,tag)
 
         for tag,start,end in self.prod4annex4:
             writer.openSheet(tag)

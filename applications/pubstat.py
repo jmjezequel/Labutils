@@ -5,8 +5,14 @@ from tkinter import *
 from tkinter import messagebox
 from tkinter.ttk import *
 import logging
-from simplegui import stdapp, model
+
+import sys, os 
+# this hack should be changed one these lib are distributed with pip
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..','..', 'Utables'))
+
 from libhal import hal
+from simplegui import stdapp, model
 from ioformats import *
 from ioformats import availableWriters
 
