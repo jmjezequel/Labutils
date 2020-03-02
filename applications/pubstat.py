@@ -29,7 +29,7 @@ structureChoice = ["authFullName","rteamStructAcronym","deptStructAcronym","labS
 examples = {
     structureChoice[0]: '"Jean-Marc Jezequel" (use the quotes!)', 
     structureChoice[1]: "CAIRN, CELTIQUE, CIDRE, EMSEC, DiverSe, TAMIS", 
-    structureChoice[2]: "IMT Atlantique - SRCD, IRISA_D1, IRISA_D2, IRISA_D3, IRISA_D4",
+    structureChoice[2]: "IMT Atlantique - SRCD, IRISA-D1, IRISA-D2, IRISA-D3, IRISA-D4",
     structureChoice[3]: "IRISA"
 }
 
