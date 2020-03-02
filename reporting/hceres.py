@@ -234,7 +234,9 @@ class EvalHCERES(Report):
     def genAnnex4(self,writer,basefilename):
         for d in self.lab.depts.values():
             logging.info('generating Annex 4 for '+d.halId)
+            writer.editMode = True
             self.genAnnex4forDept(writer,basefilename,d)
+            writer.editMode = False
             self.genDeptPublicationList(writer,basefilename,d)
 
     def genAnnex4forDept(self, writer, basefilename: str, dept: SubStructure):
