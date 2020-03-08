@@ -1,5 +1,7 @@
 import logging
 import numbers
+import os
+import shutil
 from datetime import datetime
 
 from lab.lab import Lab, SubStructure
@@ -238,10 +240,19 @@ class EvalHCERES(Report):
             self.genAnnex4forDept(writer,basefilename,d)
             writer.editMode = False
             self.genDeptPublicationList(writer,basefilename,d)
+        logging.info('generating Annex 4 for '+self.lab.name)
+        writer.editMode = True
+        self.genAnnex4forDept(writer,basefilename)
 
-    def genAnnex4forDept(self, writer, basefilename: str, dept: SubStructure):
-        filename = basefilename+' - '+dept.halId+'.docx'
-        publist = lambda d: self.lab.pubs.getPubRecord(d.halId)
+    def genAnnex4forDept(self, writer, basefilename: str, dept: SubStructure=None):
+        if dept is None:
+            filename = basefilename+'.docx'
+            publist = lambda d: self.lab.pubs.getPubRecord()
+        else:
+            filename = basefilename+' - '+dept.halId+'.docx'
+            if not os.path.isfile(filename):
+                shutil.copyfile(basefilename+'.docx',filename)
+            publist = lambda d: self.lab.pubs.getPubRecord(d.halId)
         self.deptProdList = [
             ("#Articles",publist, lambda p: p.isJournal()),
             ("#Books",publist, lambda p: p.isBook()),
@@ -265,9 +276,11 @@ class EvalHCERES(Report):
         writer.open(filename)
         for tag,target,condition in self.deptProdList:
             writer.openSheet(tag,'bibliography',terse=True,citationStyle='HCERES',numbered=True,resetCount=False)
-            writer.writeTitle("Total " + tag +": " + str(self.lab.pubs.getStructTotal(dept.halId, condition)), level=2)
+            writer.writeTitle("Total " + tag + ": " + str(self.lab.pubs.getStructTotal(
+                None if dept is None else dept.halId, condition)), level=2)
             writer.writeTitle("Main publications (in the overall 20%)",level=2,bold=True)
-            target(dept).writePubList(writer,lambda p: p.getHalId() in dept.mainPubs and condition(p))
+            mainPubs = dept.mainPubs if dept is not None else []  #TODO: update this when lab is a composite of dept
+            target(dept).writePubList(writer,lambda p: p.getHalId() in mainPubs and condition(p))
 #             writer.writeTitle("Other publications",level=3)
 #             target(dept).writePubList(writer,lambda p: p.getHalId() not in mainpub and condition(p))
             writer.closeSheet()
@@ -278,8 +291,8 @@ class EvalHCERES(Report):
             writer.openSheet(tag)
             writer.setLineNumber(-1)
             for line in range(start,end+1):
-                label, function, filter = self.ProdLines.get(line)
-                writer.writeln((label,": ",str(function(dept,filter))))
+                label, function, cond = self.ProdLines.get(line)
+                writer.writeln((label,": ",str(function(dept, cond))))
                 writer.closeSheet()
         writer.close()
 

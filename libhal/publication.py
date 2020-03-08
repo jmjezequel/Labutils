@@ -70,8 +70,14 @@ class Publication:
     def getTeams(self):
         return self._teams
 
+    def isIntraTeam(self):
+        return len(self.getTeams()) == 1
+
     def getDepts(self):
         return self._depts
+
+    def isIntraDept(self):
+        return len(self.getDetps()) == 1
 
     def _getDeptCodes(self,size):
         result = ''

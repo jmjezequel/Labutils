@@ -28,6 +28,7 @@ class Lab:
     Typically a UMR in the french system"""
     def __init__(self, name: str, halstructkind: str):
         self.name = name
+        self.halId = name
         self.halstructkind = halstructkind
         self.members = dict() # dict(key,Person)
 #        self.membersByName = dict() #dict(fullName,person) used s a cache to access members by names
@@ -65,7 +66,16 @@ class Lab:
     def getDeptOfTeam(self, team): 
         ''' return Department of team'''
         return self.teams.get(team,-1)
-    
+
+    def getTeams(self, dept: SubStructure=None):
+        if dept is None:
+            return self.teams.keys()
+        result = []
+        for t,d in self.teams.items():
+            if d == dept.number:
+                result.append(t)
+        return result
+
     def getDeptPanel(self,dept):
         return self.panels.get(dept)
 
@@ -131,11 +141,21 @@ class Lab:
         return pb
 
     def getContracts(self, startDate, endDate, struct: SubStructure=None, condition=alwaysTrue): # condition(Person,d1,d2)->boolean
-        ''' returns total amount of contracts matching condition at a certain date for struct, or if struct is None for the Lab'''
+        """ returns total number of contracts matching condition at a certain date for struct, or if struct is None
+        for the Lab """
         def cond(c: Contract): return c.isWithin(startDate,endDate,struct) and condition(c)
         result = 0
         for contract in filter(cond,self.contracts):
             result += 1
+        return result
+
+    def getContractAmount(self, startDate, endDate, struct: SubStructure=None, condition=alwaysTrue): # condition(Person,d1,d2)->boolean
+        """ returns total amount of contracts matching condition at a certain date for struct, or if struct is None
+        for the Lab """
+        def cond(c: Contract): return c.isStarting(startDate,endDate,struct) and condition(c)
+        result = 0
+        for contract in filter(cond,self.contracts):
+            result += contract.getAmount()
         return result
 
 
@@ -189,21 +209,28 @@ class Contract(dict):
             if isinstance(v,str): # strip strings
                 self.__dict__[k] = v.strip()
 
-
-    def isWithin(self,startDate,endDate,struct=None):
-        """Whether this contract is for dept 'struct' and started between the dates"""
+    def isWithin(self,startDate: datetime,endDate: datetime,struct=None):
+        """Whether this contract is for dept 'struct' and existed between the dates"""
         okdept = True if struct is None else struct.halId == self.Departement_scientifique
         return okdept and self.Date_de_debut_prise_deffet <= endDate and self.Date_de_fin_echeance >= startDate
-    
+
+    def isStarting(self,startDate: datetime,endDate: datetime,struct=None):
+        """Whether this contract is for dept 'struct' and started between the dates"""
+        okdept = True if struct is None else struct.halId == self.Departement_scientifique
+        return okdept and self.Date_de_debut_prise_deffet <= endDate and self.Date_de_debut_prise_deffet >= startDate
+
     def isKind(self,*args):
         """ return whether this contract is of HCERES kind in args"""
         return self.Categorie_HCERES in args
  
-    def isKindWithRole(self,leader,*args):
+    def isKindWithRole(self,leader: bool,*args):
         """ return whether this contract is of HCERES kind in args with coordination career 'role' """
         coord = leader == (self.PorteurPartenaire == 'Porteur')
         return self.isKind(*args) and coord
-    
+
+    def getAmount(self):
+        return 0 if self.Montant_total_du_contrat is None else self.Montant_total_du_contrat
+
     def isCifre(self): return self.Nom_du_type_de_Programme == 'CIFRE'
     
     def isLabcom(self): return self.Nom_du_type_de_Programme == 'Labcom'

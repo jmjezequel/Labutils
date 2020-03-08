@@ -230,30 +230,30 @@ class StructPubRecords:
             struct.addPub(getPublicationFrom(pub)) 
 
     def getPubRecord(self,struct=None):
-        if struct==None:
+        if struct is None:
             return self.consolidated
         return self.structs[struct]
     
     def getStructScore(self, struct, date, condition):
-        ''' returns struct's number of publications matching filter for date'''
+        """ returns struct's number of publications matching filter for date"""
         return self.structs[struct].getScoreFor(date,condition)
 
     def getTotal(self, struct=None, condition=alwaysTrue):
-        ''' returns total matching filter'''
-        if struct==None:
-            return self.getConsolidatedTotal(condition)
+        """ returns total matching filter"""
         return self.getStructTotal(struct,condition)
 
     def getStructTotal(self, struct,condition):
-        ''' returns struct's total of publications matching filter'''
+        """ returns struct's total of publications matching filter"""
+        if struct is None:
+            return self.getConsolidatedTotal(condition)
         return self.structs[struct].getTotalScore(condition)
 
     def getConsolidatedScore(self,date,condition):
-       ''' returns consolidated number of publications matching filter for date'''
-       return self.consolidated.getScoreFor(date,condition)
+        """ returns consolidated number of publications matching filter for date"""
+        return self.consolidated.getScoreFor(date,condition)
 
     def getConsolidatedTotal(self,condition):
-        ''' returns consolidated total number of publications matching filter'''
+        """ returns consolidated total number of publications matching filter"""
         return self.consolidated.getTotalScore(condition)
 
     def yieldDates(self):
@@ -290,7 +290,7 @@ class StructPubRecords:
         writer.closeSheet()
 
     def yieldScoreForVenue(self, venueKind, venueName):
-        ''' yield how many publications by struct do match venueName'''
+        """ yield how many publications by struct do match venueName"""
         yield venueName
         for s in self.structs:
             yield str(self.structs[s].getTotalScore(lambda pub: filterByVenue(pub,venueKind,venueName)))
