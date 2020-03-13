@@ -1,5 +1,6 @@
-import logging
+import json
 
+from lab.assets import Contract, Software, Patent, Asset
 from lab.employees import *
 
 
@@ -31,7 +32,7 @@ class Lab:
         self.halId = name
         self.halstructkind = halstructkind
         self.members = dict() # dict(key,Person)
-#        self.membersByName = dict() #dict(fullName,person) used s a cache to access members by names
+        self.membersByName = dict() #dict(fullName,person) used s a cache to access members by names
         self.teams = dict() # dict(teamname, DeptNumber)
         self.tutellesENS = []
         self.tutellesEPST = []
@@ -41,6 +42,8 @@ class Lab:
         self.supportServices: Dict[str,SubStructure] = dict()  # the key is the halid of the structure
         self._substructs = None
         self.contracts = []
+        self.softwares = []
+        self.patents = []
         self.pubs = None
 
 
@@ -55,16 +58,16 @@ class Lab:
     def getTutelles(self):
         return self.tutellesENS + self.tutellesEPST + self.tutellesAutres
     
-    def getByKey(self, key):
-        ''' return a person from key'''       
+    def getByKey(self, key: str ) -> Person:
+        """ return a person from key"""
         return self.members.get(key)
                        
-    # def getByName(self, firstName, lastName=''):
-    #     ''' return a person with firstName, lastName. If lastName='' consider fisrtName contains full name'''
-    #     return self.membersByName.get(getFullName(firstName, lastName))
+    def getByName(self, firstName: str, lastName: str = '') -> Person:
+        """ return a person with firstName, lastName. If lastName='' consider fisrtName contains full name"""
+        return self.membersByName.get(getFullName(firstName, lastName))
                                
-    def getDeptOfTeam(self, team): 
-        ''' return Department of team'''
+    def getDeptOfTeam(self, team):
+        """ return Department of team"""
         return self.teams.get(team,-1)
 
     def getTeams(self, dept: SubStructure=None):
@@ -119,18 +122,26 @@ class Lab:
 #         return False
     
     def addContract(self,dict):
-        ''' register a contract provided as a dict'''
+        """ register a contract provided as a dict"""
         self.contracts.append(Contract(dict))
+
+    def addSoftware(self,dict):
+        """ register a Software provided as a dict"""
+        self.softwares.append(Software(dict))
+
+    def addPatent(self,dict):
+        """ register a Patent provided as a dict"""
+        self.patents.append(Patent(dict))
 
     def addPerson(self,key,firstName,lastName,birthdate,gender,citizenship):
         person = Person(firstName,lastName,birthdate,gender,citizenship)
         person.lab = self
         self.members[key] = person
- #       self.membersByName[getFullName(firstName, lastName)] = person
+        self.membersByName[getFullName(firstName, lastName)] = person
         return person
         
     def sanityCheck(self, * checks):
-        ''' perform a few checks on the read data'''
+        """ perform a few checks on the read data"""
         pb = 0
         for m in self.members.values():
             for check in checks:
@@ -140,19 +151,19 @@ class Lab:
                     logging.warning(m.getName()+": "+msg)
         return pb
 
-    def getContracts(self, startDate, endDate, struct: SubStructure=None, condition=alwaysTrue): # condition(Person,d1,d2)->boolean
-        """ returns total number of contracts matching condition at a certain date for struct, or if struct is None
+    def getAssets(self, asset: str, startDate, endDate, struct: SubStructure=None, condition=alwaysTrue): # condition(Person,d1,d2)->boolean
+        """ returns total number of assets matching condition at a certain date for struct, or if struct is None
         for the Lab """
-        def cond(c: Contract): return c.isWithin(startDate,endDate,struct) and condition(c)
+        def cond(a: Asset): return a.isWithin(startDate, endDate, struct) and condition(a)
         result = 0
-        for contract in filter(cond,self.contracts):
+        for x in filter(cond, getattr(self,asset)):
             result += 1
         return result
 
     def getContractAmount(self, startDate, endDate, struct: SubStructure=None, condition=alwaysTrue): # condition(Person,d1,d2)->boolean
         """ returns total amount of contracts matching condition at a certain date for struct, or if struct is None
         for the Lab """
-        def cond(c: Contract): return c.isStarting(startDate,endDate,struct) and condition(c)
+        def cond(c: Contract): return c.isStarting(startDate, endDate, struct) and condition(c)
         result = 0
         for contract in filter(cond,self.contracts):
             result += contract.getAmount()
@@ -175,15 +186,15 @@ class Lab:
     #     return self.getMeanOf(prop,lambda m: m.isMember(startdate,endDate,struct) and condition(m))
 
     def getMeanOf(self, startDate,endDate, prop, struct: SubStructure=None,  condition=alwaysTrue):
-        ''' return mean value of prop for members selected by condition'''
+        """ return mean value of prop for members selected by condition"""
         result = 0
         n = 0
         for m in filter(lambda m: m.isMember(startDate,endDate,struct) and condition(m), self.members.values()):
             value = prop(m)
-            if value != None and value != "":
+            if value is not None and value != "":
                 result += value
                 n += 1
-        return result / n if n > 0 else 0
+        return round(result / n, 1) if n > 0 else 0
 
     def getTotalOf(self, startDate,endDate, prop, struct: SubStructure=None, condition=alwaysTrue):
         """ return total value of prop for members selected by condition"""
@@ -198,43 +209,28 @@ class Lab:
         # for key in sorted(self.members.keys()):
         for m in filter(condition,self.members.values()):
             yield m
-                
 
-class Contract(dict):
-    """ data from a contract where fields are initialized through a dict"""
-    def __init__(self, *args, **kwargs):
-        super(Contract, self).__init__(*args, **kwargs)
-        self.__dict__ = self # allow to acces field x with either self.x or self['x']
-        for k,v in self.__dict__.items():
-            if isinstance(v,str): # strip strings
-                self.__dict__[k] = v.strip()
+    def yieldAssets(self, asset: str, startDate, endDate, struct: SubStructure, condition):
+        def cond(a: Asset): return a.isWithin(startDate, endDate, struct) and condition(a)
+        for x in filter(cond,getattr(self,asset)):
+            yield x
 
-    def isWithin(self,startDate: datetime,endDate: datetime,struct=None):
-        """Whether this contract is for dept 'struct' and existed between the dates"""
-        okdept = True if struct is None else struct.halId == self.Departement_scientifique
-        return okdept and self.Date_de_debut_prise_deffet <= endDate and self.Date_de_fin_echeance >= startDate
+    def savePropertyAsJson(self,outputDir,property):
+        p = getattr(self, property)
+        if len(p) > 0:
+            with open(outputDir + property + ".json", 'w') as jsonfile:
+                json.dump(p, jsonfile, cls=LabEncoder, indent=2)
 
-    def isStarting(self,startDate: datetime,endDate: datetime,struct=None):
-        """Whether this contract is for dept 'struct' and started between the dates"""
-        okdept = True if struct is None else struct.halId == self.Departement_scientifique
-        return okdept and self.Date_de_debut_prise_deffet <= endDate and self.Date_de_debut_prise_deffet >= startDate
+    def saveAsJson(self,outputDir):
+        for property in ('members','depts','contracts','softwares','patents'):
+            self.savePropertyAsJson(outputDir,property)
 
-    def isKind(self,*args):
-        """ return whether this contract is of HCERES kind in args"""
-        return self.Categorie_HCERES in args
- 
-    def isKindWithRole(self,leader: bool,*args):
-        """ return whether this contract is of HCERES kind in args with coordination career 'role' """
-        coord = leader == (self.PorteurPartenaire == 'Porteur')
-        return self.isKind(*args) and coord
-
-    def getAmount(self):
-        return 0 if self.Montant_total_du_contrat is None else self.Montant_total_du_contrat
-
-    def isCifre(self): return self.Nom_du_type_de_Programme == 'CIFRE'
-    
-    def isLabcom(self): return self.Nom_du_type_de_Programme == 'Labcom'
-
-    def isIUF(self): return self.Nom_du_type_de_Programme == 'IUF'
-
+class LabEncoder(json.JSONEncoder):
+    def default(self, obj):
+       if isinstance(obj, datetime):
+            return obj.date().isoformat()
+       if isinstance(obj, Lab):
+            return obj.name
+       return obj.__dict__
+#       return json.JSONEncoder.default(self, obj)
 

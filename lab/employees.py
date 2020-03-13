@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime, timedelta
 import math
 import re
 import unicodedata
@@ -13,10 +13,10 @@ def alwaysTrue(* args):
 
 def dt(year):
     """return a datetime starting that year"""
-    return datetime.datetime(year,1,1)
+    return datetime(year,1,1)
 
 def getFullName(* args):
-    ''' concatenate args, eg firstName, lastName into "firstName lastName"'''
+    """ concatenate args, eg firstName, lastName into "firstName lastName\""""
     return ' '.join(str(arg) for arg in args)
 
 CT='CT'                 #  Contrat à durée déterminée (catégorie non précisée)
@@ -92,7 +92,7 @@ class Person:
     # firstName: str
     # lastName: str
     # gender: str
-    # birthdate: datetime.datetime
+    # birthdate: datetime
     # citizenship: str
     # career: List[Status] = []  # successive (or simultaneous) status/roles played by this person in the lab
     # diplomas: Dict[str, Diploma] = dict()  # dict of <str,Diploma>, key is diploma level eg PhD
@@ -123,7 +123,11 @@ class Person:
 
     def getPhDRawPubList(self):
         """return the list of raw publications for the period, under the form of a list of dict"""
-        startYear = self.getStartDate().year
+        start = self.get('debutThese')
+        if start == "":
+            logging.error(self.getName()+ " has no PhD starting date (needed in Employee.getPhDRawPubList)")
+            return []
+        startYear = start.year
         return self.getRawPubList(startYear,startYear+4)
 
     def hasStatus(self, status, first, last=None):
@@ -157,7 +161,7 @@ class Person:
 
     def getLongest(self, key):
         ''' return longest valid value of key'''
-        longest = datetime.timedelta(days=0)
+        longest = timedelta(days=0)
         result = ""
         for a in self.career:
             if a.getDuration() > longest:
@@ -168,7 +172,7 @@ class Person:
         return result
 
     def getStartDate(self):
-        result = datetime.datetime.today()
+        result = datetime.today()
         for a in self.career:
             if a.startContract < result:
                 result = a.startContract
@@ -187,7 +191,7 @@ class Person:
 
     def isShortTermVisitor(self, nbdays):
         ''' return whether this person stayed less than nbdays days in the lab'''
-        return self.getStayDuration() < datetime.timedelta(days=nbdays)
+        return self.getStayDuration() < timedelta(days=nbdays)
 
     def getMasterIntitution(self):
         master = self.diplomas.get('Master')
@@ -249,20 +253,36 @@ class Person:
         """ return whether this person has been a CDD IT at some point over the period first...last"""
         return self.hasBeen(first, last, CT)
 
+    def isAssociatedMember(self, first, last=None):
+        """ return whether this person has been a Non-permanent professors and associate professors, including
+        emeritus over the period first...last """
+        return self.hasBeen(first, last, CHASSOCIE)
+
     def isNonPermanentEC(self, first, last=None):
         """ return whether this person has been a Non-permanent professors and associate professors, including
         emeritus over the period first...last """
         return self.hasBeen(first, last, 'PREM', ECC)
-    
+
     def isNonPermanentScientist(self, first, last=None):
         """ return whether this person has been a Non-permanent full time scientists, including emeritus, post-docs
         over the period first...last """
         return self.hasBeen(first, last, 'DREM', CHCONTRACTUEL, POSTDOC)
-    
 
-#     def isCDDScientifique(self, first, last=None):
-#         ''' return whether this person has been a CDD Scientif at some point over the period first...last'''
-#         return self.hasBeen(first, last, CHCONTRACTUEL)
+    def isNonPermanentStaff(self, first, last=None):
+        """ return whether this person has been a Non-permanent staff
+        over the period first...last """
+        return self.hasBeen(first, last, 'DREM', 'PREM', ECC, CHCONTRACTUEL, POSTDOC, CT, DOCTORANT)
+
+    def isPermanentStaff(self, first, last=None):
+        """ return whether this person has been a permanent staff
+        over the period first...last """
+        return self.isPermanentResearcher(first, last) or self.isITA(first, last)
+
+    def isStaff(self, first, last=None):
+        """ return whether this person has been in the staff
+        over the period first...last """
+        return self.isPermanentStaff(first, last) or self.isNonPermanentStaff(first, last)
+
 
     def isPR(self, first, last=None):
         ''' return whether this person has been a PR at some point over the period first...last'''
@@ -344,7 +364,7 @@ class Person:
         start = self.get('debutThese')
         if start == "":
             return ""
-        duration = math.floor((phd.date-start) / datetime.timedelta(days=30)) # duration in months
+        duration = math.floor((phd.date-start) / timedelta(days=30)) # duration in months
         return duration 
     
     def getTeam(self, date):
@@ -415,7 +435,7 @@ class Person:
             yield " "
         else:
             yield phd.date.date()
-            yield math.floor((phd.date-start) / datetime.timedelta(days=30)) # duration in months
+            yield math.floor((phd.date-start) / timedelta(days=30)) # duration in months
         yield self.get('devenir')
         yield self.getLongest('financement')
                 

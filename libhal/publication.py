@@ -1,5 +1,7 @@
-PUBYEAR = 'publicationDateY_i'
-PUBMONTH = 'publicationDateM_i'
+import logging
+
+PUBYEAR = 'producedDateY_i'
+PUBMONTH = 'producedDateM_i'
 
 def getSetFrom(iterable):
     if iterable == None:
@@ -35,7 +37,7 @@ MONTH_NAMES = {
     }
 
 class Publication:
-    ''' facade object for the dictionary returned by getpub from Hal'''
+    """ facade object for the dictionary returned by getpub from Hal"""
     def __init__(self, pubdict):
         self.pub = pubdict
         self.code = 'O'
@@ -44,7 +46,10 @@ class Publication:
         self._depts = getSetFrom(self.pub.get("deptStructAcronym_s"))
         self._labs = getSetFrom(self.pub.get("labStructAcronym_s"))
         self._countries = getSetFrom(self.pub.get("instStructCountry_s"))
-        
+        # produced = self.pub.get("producedDateY_i")
+        # if produced is not None and produced != self.getYear():
+        #     logging.warning('Publication '+self._halId+' produced='+str(produced)+', published='+str(self.getYear()))
+
     def getYear(self):
         return self.pub.get(PUBYEAR)
 
@@ -63,7 +68,7 @@ class Publication:
        
     def getHCERESkey(self):
         initials = ''
-        for a in self.getAuthors():
+        for a in self.getAuthors()[:3]:  # take only first 3 ones
             initials += getLastNameInitial(a)
         return '['+self._getDeptCodes(2)+'-'+self.code+'-'+str(self.getYear())+'-'+str(self.getMonth())+'-'+initials+'] '
 

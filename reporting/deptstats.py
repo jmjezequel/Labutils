@@ -74,6 +74,7 @@ class DeptStats(Report):
             ("Females among RangB HDR", self.ratioOfDiff, (lambda m,sdate,edate: m.isFemale()), (lambda m,sdate,edate: m.getDateHDR() !="" and m.isRangB(sdate,edate))),
             ("HDR among RangB Females", self.ratioOfDiff, (lambda m,sdate,edate: m.getDateHDR() !=""), (lambda m,sdate,edate: m.isFemale() and m.isRangB(sdate,edate))),
             ("HDR among RangB Males", self.ratioOfDiff, (lambda m,sdate,edate: m.getDateHDR() !=""), (lambda m,sdate,edate: m.isMale() and m.isRangB(sdate,edate))),
+            ("Total Faculties", self.tmembers, (lambda m,sdate,edate: m.isPermanentResearcher(sdate,edate))),
             ("Ratio E/C", self.ratioOfDiff, (lambda m,sdate,edate: m.isEC(sdate,edate)), (lambda m,sdate,edate: m.isPermanentResearcher(sdate,edate))),
             ("Post-Docs", self.tmembers, lambda m,sdate,edate: m.isPostDoc(sdate,edate)),
             ("PhD Students", self.tmembers, lambda m,sdate,edate: m.isPhDStudent(sdate,edate)),
@@ -84,7 +85,11 @@ class DeptStats(Report):
             ("Male Research Staff", self.tmembers, lambda m,sdate,edate: m.isMale() and m.isResearcher(sdate,edate)),
             ("Female ratio", self.ratioOfDiff, (lambda m,sdate,edate: m.isFemale()), (lambda m,sdate,edate: m.isResearcher(sdate,edate))),
             ("Permanent engineers", self.tmembers, lambda m,sdate,edate: m.isResearchEngineer(sdate,edate)),
-            ("Contract engineers", self.tmembers, lambda m,sdate,edate: m.isContractEngineer(sdate,edate))
+            ("Contract engineers", self.tmembers, lambda m,sdate,edate: m.isContractEngineer(sdate,edate)),
+            ("Associated members", self.tmembers, lambda m,sdate,edate: m.isAssociatedMember(sdate,edate)),
+            ("Visitors", self.tmembers, lambda m,sdate,edate: m.isVisitingScientist(sdate,edate)),
+            ("Interns", self.tmembers, lambda m,sdate,edate: m.isIntern(sdate,edate)),
+            ("Total staff", self.tmembers, lambda m, sdate, edate: m.isMember(sdate, edate)),
         ]
         
         self.contracts = [

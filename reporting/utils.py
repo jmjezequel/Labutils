@@ -46,7 +46,13 @@ class Report:
         return self.lab.getMembersCount(self.startDate, self.endDate, struct, cond)
 
     def tcontracts(self, struct: SubStructure, cond):
-        return self.lab.getContracts(self.startDate, self.endDate, struct, cond)
+        return self.lab.getAssets('contracts',self.startDate, self.endDate, struct, cond)
+
+    def tsoftwares(self, struct: SubStructure, cond):
+        return self.lab.getAssets('softwares',self.startDate, self.endDate, struct, cond)
+
+    def tpatents(self, struct: SubStructure, cond):
+        return self.lab.getAssets('patents',self.startDate, self.endDate, struct, cond)
 
     def mcontracts(self, struct: SubStructure, cond):
         return self.lab.getContractAmount(self.startDate, self.endDate, struct, cond)
@@ -63,11 +69,11 @@ class Report:
 
     def tdocpubs(self, struct: SubStructure, cond):
         """return number of publications for a PhD student who defended her thesis"""
-        return self.lab.getTotalOf(self.startDate, self.endDate, lambda m: len(m.getPhDRawPubList()) - 1, struct,
-                                   cond)  # -1 to exclude own PhD document
+        return self.lab.getTotalOf(self.startDate, self.endDate, lambda m: len(m.getPhDRawPubList()), struct,
+                                   cond)
 
     def mdocpubs(self, struct: SubStructure, cond):
-        return self.lab.getMeanOf(self.startDate, self.endDate, lambda m: len(m.getPhDRawPubList()) - 1, struct, cond)
+        return self.lab.getMeanOf(self.startDate, self.endDate, lambda m: len(m.getPhDRawPubList()), struct, cond)
 
     def mduration(self, struct, cond):
         return math.floor(

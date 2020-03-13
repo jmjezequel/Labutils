@@ -11,7 +11,7 @@ from pathlib import Path
 import tempfile
 from libhal.publication import Publication,getPublicationFrom
 
-fields = "halId_s,instStructCountry_s,docType_s,invitedCommunication_s,peerReviewing_s,conferenceTitle_s,journalTitle_s,bookTitle_s,audience_s,authFullName_s,title_s,publicationDateY_i,publicationDateM_i,publisher_s,rteamStructAcronym_s,deptStructAcronym_s,labStructAcronym_s"
+fields = "halId_s,instStructCountry_s,docType_s,invitedCommunication_s,peerReviewing_s,conferenceTitle_s,journalTitle_s,bookTitle_s,audience_s,authFullName_s,title_s,producedDateY_i,producedDateM_i,publisher_s,rteamStructAcronym_s,deptStructAcronym_s,labStructAcronym_s"
 # label_bibtex yields a full bibtex ref
 # change producedDateY_i by publicationDateY_i and publicationDateM_i
 # country_s yields the country where the pub took place
@@ -19,13 +19,13 @@ fields = "halId_s,instStructCountry_s,docType_s,invitedCommunication_s,peerRevie
 
     
 class PubSet:
-    '''stores a set of publications indexed by their HalId'''
+    """stores a set of publications indexed by their HalId"""
     def __init__(self):
         self.pubs = dict() # where the key is the HalId
 
     def __iter__(self): self.pubs.__iter__()
 
-    def addPub(self, pub):
+    def addPub(self, pub: Publication):
         self.pubs[pub.getHalId()] = pub
            
     def getNumberFor(self, pubFilter):
@@ -64,13 +64,15 @@ class PubSet:
             result = result+pub.asString()+'\n'
         return (result, count)
 
+
+
 class PubRecord:
-    '''stores PubSets indexed per year for a Structure of name "name"'''
+    """stores PubSets indexed per year for a Structure of name "name\""""
     def __init__(self, name):
         self.name = name
         self.slices = dict() # dict(date, PubSet)
 
-    def addPub(self, pub):
+    def addPub(self, pub: Publication):
         date = pub.getYear()
         slice = self.slices.get(date)
         if (slice == None):
@@ -93,27 +95,27 @@ class PubRecord:
         return self.slices.get(date, PubSet()) #if not exist yet, return  new one
 
     def getScoreFor(self, date, pubFilter):
-        ''' returns how many publications do match defaultPubFilter for the date'''
+        """ returns how many publications do match defaultPubFilter for the date"""
         return self.getPubs(date).getNumberFor(pubFilter)
  
     def getTotalScore(self, pubFilter):
-        ''' returns how many publications do match defaultPubFilter forall considered date'''
+        """ returns how many publications do match defaultPubFilter forall considered date"""
         result = 0
         for date in self.slices.keys():
             result = result + self.getScoreFor(date, pubFilter)
         return result
  
-    def merge(self, otherPubRecord):
-        for date in otherPubRecord.slices.keys():
+    def merge(self, other: 'PubRecord'):
+        for date in other.slices.keys():
             pubs = self.getPubs(date)
             if not date in self.slices:
                 self.slices[date] = pubs
-            pubs.merge(otherPubRecord.getPubs(date))
+            pubs.merge(other.getPubs(date))
 
-    def writePubList(self,writer,condition):
+    def writePubList(self, writer, condition):
         for k in sorted(self.slices.keys()):
-            self.slices[k].writePubList(writer,condition)
-        
+            self.slices[k].writePubList(writer, condition)
+
     def asString(self, filter, startingNumber=1):
         '''Deprecated'''
         # result = "### "+self.name+'\n'
@@ -158,8 +160,9 @@ def isVenueNameMatch(read,wanted):
     w = wanted.replace("&","and").casefold()
     return r.find(w) >=0
 
+
 class ProgressionReporter:
-    '''To be subclassed if use of a GUI to show progress bar'''
+    """To be subclassed if use of a GUI to show progress bar"""
     def initialize(self,size):
         pass
     def step(self):
@@ -169,17 +172,18 @@ class ProgressionReporter:
     def message(self,* args):
         logging.info(* args)
 
+
 class StructPubRecords:
-    '''store PubRecords for a set of structs over a period'''
+    """store PubRecords for a set of structs over a period"""
     def __init__(self, structList, startYear, endYear):
 #    result.readByVenues(collection,"conferenceTitle",conferences)):
         self.startYear = startYear
         self.endYear = endYear
-        self.structs = dict() # of (structName, PubRecord)
+        self.structs = dict()  # of (structName, PubRecord)
         for t in structList:
             if t != '':
                 self.structs[t] = PubRecord(t)
-        self.consolidated = PubRecord("Total") # stores the consolidated consolidated
+        self.consolidated = PubRecord("Total") # stores the consolidated total
         
     def getStructureNumber(self):
         return len(self.structs)
@@ -433,6 +437,7 @@ os.makedirs(halcachedir, exist_ok=True)
 def clearCache():
     for path in Path(halcachedir).glob('*.json'):
         path.unlink()
+
 
 def setuplog(logfilename=None):
     if logfilename == None:

@@ -8,6 +8,10 @@ from lab.lab import Lab, SubStructure
 from reporting.utils import ratio, dateIsWithin, Report
 
 
+def alwaysTrue(* args):
+    return True
+
+
 class EvalHCERES(Report):
     def __init__(self, lab: Lab, startDate: datetime, endDate: datetime, endContract: datetime):
         super().__init__(lab,startDate,endDate)
@@ -20,11 +24,13 @@ class EvalHCERES(Report):
             "Other scientists": None,
             "High school teachers": None,
             "Supporting personnel": lambda m,date: m.isITA(date),
-            "Permanent staff": None,
+            "Permanent staff": lambda m,date: m.isPermanentStaff(date),
             "Non-permanent professors and associate professors, including emeritus": lambda m,date: m.isNonPermanentEC(date),
             "Non-permanent full time scientists, including emeritus, post-docs": lambda m,date: m.isNonPermanentScientist(date),
             "PhD Students": lambda m,date: m.isPhDStudent(date),
-            "Non-permanent supporting personnel": lambda m,date: m.isCDDIT(date)
+            "Non-permanent supporting personnel": lambda m,date: m.isCDDIT(date),
+            "Non permanent staff": lambda m,date: m.isNonPermanentStaff(date),
+            "Total": lambda m,date: m.isStaff(date),
             }
 
         self.ProdLines = {
@@ -40,6 +46,8 @@ class EvalHCERES(Report):
             38 :("Articles published in conference proceedings ", self.tpubs, lambda p: p.isConference()),
             39 :("Other products presented in symposia", self.tpubs, lambda p: p.isInvited()),
             40 :("4- Electronic tools and products",),
+            41 :("Softwares",self.tsoftwares,alwaysTrue),
+            42 :("Databases",None,None),
             61 :("International (outside Europe) grants - coordination", self.tcontracts, lambda c: c.isKindWithRole(True, "Programmes internationaux")),
             62 :("International (outside Europe) grants - partnership", self.tcontracts, lambda c: c.isKindWithRole(False, "Programmes internationaux")),
             63 :("ERC grants - coordination", self.tcontracts, lambda c: c.isKindWithRole(True, "Grants ERC")),
@@ -61,16 +69,16 @@ class EvalHCERES(Report):
             79 :("Foreign visiting scientists", self.tmembers, lambda m: m.isVisitingScientist(startDate, endDate) and m.citizenship != 'FRANCE'),
             82 :("IUF Members", self.tcontracts, lambda c: c.isIUF()),
             89 :("1- Socio-economic interactions / Patents",),
-            90 :("Invention disclosures",),
-            91 :("Filed patents",),
-            92 :("Accepted patents",),
+            90 :("Invention disclosures",None,None),
+            91 :("Filed patents",self.tpatents,alwaysTrue),
+            92 :("Accepted patents",self.tpatents,lambda a: a.isAccepted()),
             93 :("Licenced patents", self.tcontracts, lambda c: c.isKind("Licences d'exploitation des brevets, certificat d'obtention végétale")),
             94 :("2- Socio-economic interactions",),
-            95 :("Industrial and R&D contracts ", self.tcontracts, lambda c: c.isKind("Contrats de recherche industriels")),
+            95 :("Industrial and R&D contracts", self.tcontracts, lambda c: c.isKind("Contrats de recherche industriels")),
             96 :("Cifre fellowships", self.tcontracts, lambda c: c.isCifre()),
             97 :("Creation of labs with private-public partnerships", self.tcontracts, lambda c: c.isLabcom()),
-            98 :("Networks and mixed units",),
-            99 :("Start-ups",),
+            98 :("Networks and mixed units",None,None),
+            99 :("Start-ups",None,None),
             110:("1- Educational outputs",),
             111:("Books", self.tpubs, lambda p: p.isBook() and not p.isInternationalAudience()),
             112:("E-learning, MOOCs, multimedia courses, etc.",),
@@ -137,7 +145,7 @@ class EvalHCERES(Report):
         writer.closeSheet()
 
     def listSynthStaff(self,name,writer):
-        '''Requires that the right number of columns is in the sheet'''
+        """Requires that the right number of columns is in the sheet"""
         writer.openSheet(name,'table')
         writer.setLineNumber(8)
         writer.writeTitle(self._yieldSynthTitle(),always=True)
@@ -247,68 +255,99 @@ class EvalHCERES(Report):
     def genAnnex4forDept(self, writer, basefilename: str, dept: SubStructure=None):
         if dept is None:
             filename = basefilename+'.docx'
-            publist = lambda d: self.lab.pubs.getPubRecord()
+            publist = self.lab.pubs.getPubRecord()
         else:
             filename = basefilename+' - '+dept.halId+'.docx'
             if not os.path.isfile(filename):
                 shutil.copyfile(basefilename+'.docx',filename)
-            publist = lambda d: self.lab.pubs.getPubRecord(d.halId)
+            publist = self.lab.pubs.getPubRecord(dept.halId)
         self.deptProdList = [
-            ("#Articles",publist, lambda p: p.isJournal()),
-            ("#Books",publist, lambda p: p.isBook()),
-            ("#BookEditions",publist, lambda p: p.isEditedBook()),
-            ("#BookChapters",publist, lambda p: p.isBookChapter()),
-            ("#IntConfs",publist, lambda p: p.isConference()),
-            ("#PhDThesis",publist, lambda p: p.isThesis())
+            ("#Articles","Articles", lambda p: p.isJournal()),
+            ("#Books","Monographs, critical editions, translations", lambda p: p.isBook()),
+            ("#BookEditions","Management and coordination of scientific books / scientific book edition", lambda p: p.isEditedBook()),
+            ("#BookChapters","Book chapters", lambda p: p.isBookChapter()),
+            ("#PhDThesis","PhD Thesis", lambda p: p.isThesis()),
+            ("#IntConfs","Production in conferences / congresses", lambda p: p.isConference()),
         ]
-        # self.deptTables = [
-        #     ("#ProductionNumbers",self.listProduction)
-        # ]
+
+        self.deptTables = [
+            ("#SynthStaff",self.listStaff)
+         ]
 
         self.prod4annex4 = [
             ("#Visiting",76,79),  # Means extract lines 75-79 of self.ProdLines
+            ("#PhDProd",114,115),
             ("#Training",117,123),
-            ("#Contracts",61,74)
+            ('#Softwares', 41, 42),
+            ("#Contracts",61,74),
+            ('#Patents',91,93),
+            ('#Transfer',95,97),
         ]
 
         writer.numberPrefix = ''
         writer.numberSuffix = '. '
+        writer.setLineNumber(0)
         writer.open(filename)
-        for tag,target,condition in self.deptProdList:
+        for tag,label,condition in self.deptProdList:
             writer.openSheet(tag,'bibliography',terse=True,citationStyle='HCERES',numbered=True,resetCount=False)
-            writer.writeTitle("Total " + tag + ": " + str(self.lab.pubs.getStructTotal(
-                None if dept is None else dept.halId, condition)), level=2)
-            writer.writeTitle("Main publications (in the overall 20%)",level=2,bold=True)
-            mainPubs = dept.mainPubs if dept is not None else []  #TODO: update this when lab is a composite of dept
-            target(dept).writePubList(writer,lambda p: p.getHalId() in mainPubs and condition(p))
+            total = self.lab.pubs.getStructTotal(None if dept is None else dept.halId, condition) #TODO: update this when lab is a composite of dept
+            writer.writeTitle(label+" (Total Number):" + str(total), level=2)
+            mainPubs = dept.mainPubs if dept is not None else []
+            def inMainPubs(p): return p.getHalId() in mainPubs and condition(p)
+            number = publist.getTotalScore(inMainPubs)
+            if number > 0:
+                writer.writeTitle("Main publications (from the overall 20%)",level=2)
+                publist.writePubList(writer,inMainPubs)
 #             writer.writeTitle("Other publications",level=3)
 #             target(dept).writePubList(writer,lambda p: p.getHalId() not in mainpub and condition(p))
             writer.closeSheet()
-        # for tag,tabfunction in self.deptTables:
-        #     tabfunction(writer,dept,tag)
+
+        for tag,tabfunction in self.deptTables:
+             tabfunction(writer,tag,dept)
 
         for tag,start,end in self.prod4annex4:
-            writer.openSheet(tag)
+            writer.openSheet(tag,'list')
             writer.setLineNumber(-1)
             for line in range(start,end+1):
                 label, function, cond = self.ProdLines.get(line)
-                writer.writeln((label,": ",str(function(dept, cond))))
-                writer.closeSheet()
+                n = "" if function is None else str(function(dept, cond))
+                writer.writeTitle((label+":",n),level=2)
+                # TODO find a better way to do this...
+                assets = 'contracts' if function == self.tcontracts else\
+                        'patents' if function == self.tpatents else\
+                        'softwares' if function == self.tsoftwares else None
+                if assets is not None:
+                    for asset in self.lab.yieldAssets(assets,self.startDate,self.endDate,dept,cond):
+                        writer.writeln(asset.yieldDetails())
+            writer.closeSheet()
         writer.close()
 
     def genDeptPublicationList(self,writer,basefilename,dept: SubStructure):
-        filename = basefilename+' - '+dept.halId+'-publications.docx'
+        if dept is None:
+            filename = basefilename+'-publications.docx'
+            publist = self.lab.pubs.getPubRecord()
+        else:
+            filename = basefilename+' - '+dept.halId+'-publications.docx'
+            publist = self.lab.pubs.getPubRecord(dept.halId)
         writer.numberPrefix = ''
         writer.numberSuffix = '. '
         writer.open(filename)
         writer.writeTitle(dept.halId+" Full Publication List",level=0)
         writer.writeTitle(dept.name+' '+str(self.startDate.year)+"-"+str(self.endDate.year),level=1)
-        for tag,target,condition in self.deptProdList:
+        for tag,label,condition in self.deptProdList:
             writer.openSheet(tag,'bibliography',citationStyle='HCERES',numbered=True)
-            target(dept).writePubList(writer,condition)
+            publist.writePubList(writer,condition)
             writer.closeSheet()
         writer.close()
 
 
+    def listStaff(self,writer,sheetname: str, dept: SubStructure = None):
+        writer.openSheet(sheetname,'table')
+        writer.writeTitle(("Staff",self.endDate.date(),self.endContract.date()))
+        for label, cond in self.SynthStaffLines.items():
+            n1 = "" if cond is None else self.tmembers(dept,lambda m: cond(m,self.endDate))
+            n2 = "" if cond is None else self.tmembers(dept,lambda m: cond(m,self.endContract))
+            writer.writeln((label, n1, n2))
+        writer.closeSheet()
 
 
