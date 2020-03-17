@@ -4,7 +4,7 @@ from lab.assets import Contract, Software, Patent, Asset
 from lab.employees import *
 
 
-class SubStructure:
+class Structure:
     """ the inner structure of a Lab, that typically is the granularity of HCERES evaluation (kind = department,
     axis or team) """
     def __init__(self, number: int, acronym: str, name: str, halId: str, isSupport = False):
@@ -19,6 +19,10 @@ class SubStructure:
 
     def getFullName(self):
         return self.name+' ('+self.acronym+')'
+
+    def hasStructId(self, id: str):
+        """Whether this structure has this id or contains a substructure with this id"""
+        return id == self.halId
 
     def addContract(self, contract):
         self.contracts.append(contract)
@@ -38,8 +42,8 @@ class Lab:
         self.tutellesEPST = []
         self.tutellesAutres = []
         self.aliasTutelles = dict()
-        self.depts: Dict[str,SubStructure] = dict()  # the key is the halid of the structure
-        self.supportServices: Dict[str,SubStructure] = dict()  # the key is the halid of the structure
+        self.depts: Dict[str, Structure] = dict()  # the key is the halid of the structure
+        self.supportServices: Dict[str, Structure] = dict()  # the key is the halid of the structure
         self._substructs = None
         self.contracts = []
         self.softwares = []
@@ -47,10 +51,17 @@ class Lab:
         self.pubs = None
 
 
-    def getSubStructures(self):
+    def getSubStructures(self)->Dict[str, Structure]:
         if self._substructs is None:
             self._substructs = { ** self.depts, ** self.supportServices}
         return self._substructs
+
+    def hasStructId(self, id: str):
+        """Whether this structure has this id or contains a substructure with this id"""
+        if id == self.halId: return True
+        for s in self.getSubStructures():
+            if s.hasStructId(id): return True
+        return False
 
     def getTutelleFromAlias(self,alias):
         return None if alias is None else self.aliasTutelles.get(alias.upper(), alias)
@@ -58,11 +69,11 @@ class Lab:
     def getTutelles(self):
         return self.tutellesENS + self.tutellesEPST + self.tutellesAutres
     
-    def getByKey(self, key: str ) -> Person:
+    def getByKey(self, key: str) -> 'Person':
         """ return a person from key"""
         return self.members.get(key)
                        
-    def getByName(self, firstName: str, lastName: str = '') -> Person:
+    def getByName(self, firstName: str, lastName: str = '') -> 'Person':
         """ return a person with firstName, lastName. If lastName='' consider fisrtName contains full name"""
         return self.membersByName.get(getFullName(firstName, lastName))
                                
@@ -70,7 +81,7 @@ class Lab:
         """ return Department of team"""
         return self.teams.get(team,-1)
 
-    def getTeams(self, dept: SubStructure=None):
+    def getTeams(self, dept: Structure=None):
         if dept is None:
             return self.teams.keys()
         result = []
@@ -151,7 +162,7 @@ class Lab:
                     logging.warning(m.getName()+": "+msg)
         return pb
 
-    def getAssets(self, asset: str, startDate, endDate, struct: SubStructure=None, condition=alwaysTrue): # condition(Person,d1,d2)->boolean
+    def getAssets(self, asset: str, startDate, endDate, struct: Structure=None, condition=alwaysTrue): # condition(Person,d1,d2)->boolean
         """ returns total number of assets matching condition at a certain date for struct, or if struct is None
         for the Lab """
         def cond(a: Asset): return a.isWithin(startDate, endDate, struct) and condition(a)
@@ -160,7 +171,7 @@ class Lab:
             result += 1
         return result
 
-    def getContractAmount(self, startDate, endDate, struct: SubStructure=None, condition=alwaysTrue): # condition(Person,d1,d2)->boolean
+    def getContractAmount(self, startDate, endDate, struct: Structure=None, condition=alwaysTrue): # condition(Person,d1,d2)->boolean
         """ returns total amount of contracts matching condition at a certain date for struct, or if struct is None
         for the Lab """
         def cond(c: Contract): return c.isStarting(startDate, endDate, struct) and condition(c)
@@ -169,13 +180,12 @@ class Lab:
             result += contract.getAmount()
         return result
 
-
-    def getMembersCount(self, startDate: datetime, endDate: datetime, struct: SubStructure=None, condition=alwaysTrue): # condition(Person)->boolean
-        ''' returns total matching condition at a certain date'''
+    def getMembersCount(self, startDate: datetime, endDate: datetime, struct: Structure=None, condition=alwaysTrue): # condition(Person)->boolean
+        """ returns total matching condition at a certain date"""
         return self.countMembersSuchThat(lambda m: m.isMember(startDate,endDate,struct) and condition(m))
 
     def countMembersSuchThat(self,condition):
-        ''' return how many members are selected by condition'''
+        """ return how many members are selected by condition"""
         result = 0
         for m in filter(condition,self.members.values()):
             result += 1
@@ -185,7 +195,7 @@ class Lab:
     #     ''' returns mean of prop for members matching condition'''
     #     return self.getMeanOf(prop,lambda m: m.isMember(startdate,endDate,struct) and condition(m))
 
-    def getMeanOf(self, startDate,endDate, prop, struct: SubStructure=None,  condition=alwaysTrue):
+    def getMeanOf(self, startDate, endDate, prop, struct: Structure=None, condition=alwaysTrue):
         """ return mean value of prop for members selected by condition"""
         result = 0
         n = 0
@@ -196,7 +206,7 @@ class Lab:
                 n += 1
         return round(result / n, 1) if n > 0 else 0
 
-    def getTotalOf(self, startDate,endDate, prop, struct: SubStructure=None, condition=alwaysTrue):
+    def getTotalOf(self, startDate, endDate, prop, struct: Structure=None, condition=alwaysTrue):
         """ return total value of prop for members selected by condition"""
         result = 0
         for m in filter(lambda m: m.isMember(startDate,endDate,struct) and condition(m), self.members.values()):
@@ -210,7 +220,7 @@ class Lab:
         for m in filter(condition,self.members.values()):
             yield m
 
-    def yieldAssets(self, asset: str, startDate, endDate, struct: SubStructure, condition):
+    def yieldAssets(self, asset: str, startDate, endDate, struct: Structure, condition):
         def cond(a: Asset): return a.isWithin(startDate, endDate, struct) and condition(a)
         for x in filter(cond,getattr(self,asset)):
             yield x

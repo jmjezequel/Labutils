@@ -1,7 +1,7 @@
 import math
 from datetime import datetime
 
-from lab.lab import Lab, SubStructure
+from lab.lab import Lab, Structure
 
 
 def dt(year):
@@ -45,34 +45,34 @@ class Report:
     def tmembers(self, struct, cond):
         return self.lab.getMembersCount(self.startDate, self.endDate, struct, cond)
 
-    def tcontracts(self, struct: SubStructure, cond):
+    def tcontracts(self, struct: Structure, cond):
         return self.lab.getAssets('contracts',self.startDate, self.endDate, struct, cond)
 
-    def tsoftwares(self, struct: SubStructure, cond):
+    def tsoftwares(self, struct: Structure, cond):
         return self.lab.getAssets('softwares',self.startDate, self.endDate, struct, cond)
 
-    def tpatents(self, struct: SubStructure, cond):
+    def tpatents(self, struct: Structure, cond):
         return self.lab.getAssets('patents',self.startDate, self.endDate, struct, cond)
 
-    def mcontracts(self, struct: SubStructure, cond):
+    def mcontracts(self, struct: Structure, cond):
         return self.lab.getContractAmount(self.startDate, self.endDate, struct, cond)
 
     def ratioOfSums(self, struct, c1, c2):
         return ratio(self.tmembers(struct, c1), self.tmembers(struct, c2))
 
-    def ratioOfDiff(self, struct: SubStructure, additionalCondition, baseCondition):
+    def ratioOfDiff(self, struct: Structure, additionalCondition, baseCondition):
         return ratio(self.tmembers(struct, lambda m: baseCondition(m) and additionalCondition(m)),
                      self.tmembers(struct, baseCondition))
 
-    def tpubs(self, struct: SubStructure, condition):
+    def tpubs(self, struct: Structure, condition):
         return self.lab.pubs.getTotal(None if struct is None else struct.halId, condition)
 
-    def tdocpubs(self, struct: SubStructure, cond):
+    def tdocpubs(self, struct: Structure, cond):
         """return number of publications for a PhD student who defended her thesis"""
         return self.lab.getTotalOf(self.startDate, self.endDate, lambda m: len(m.getPhDRawPubList()), struct,
                                    cond)
 
-    def mdocpubs(self, struct: SubStructure, cond):
+    def mdocpubs(self, struct: Structure, cond):
         return self.lab.getMeanOf(self.startDate, self.endDate, lambda m: len(m.getPhDRawPubList()), struct, cond)
 
     def mduration(self, struct, cond):

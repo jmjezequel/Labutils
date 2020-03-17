@@ -1,7 +1,7 @@
 import numbers
 from datetime import datetime
 
-from lab.lab import Lab, SubStructure
+from lab.lab import Lab, Structure
 from reporting.utils import ratio, dateIsWithin, Report
 
 # 1. Tableau des effectifs / categorie (debut/fin de periode)
@@ -107,7 +107,7 @@ class DeptStats(Report):
             ("Total", self.mcontracts, alwaysTrue),
         ]
 
-    def yieldYearlyTitle(self, dept: SubStructure=None):
+    def yieldYearlyTitle(self, dept: Structure=None):
         """ yield a title row with onne column per year and a total"""
         yield dept.halId if dept is not None else self.lab.name
         for year in range(self.startDate.year, self.endDate.year):
@@ -129,8 +129,8 @@ class DeptStats(Report):
         self.genTable(writer,"Teams",self.listTeamsHR)
         self.genTable(writer,"Contracts",self.listContracts)
 
-    def listProduction(self, writer, sheetname: str, dept: SubStructure = None):
-        def yieldDeptYearlyProd(dept: SubStructure, label: str, function, cond):
+    def listProduction(self, writer, sheetname: str, dept: Structure = None):
+        def yieldDeptYearlyProd(dept: Structure, label: str, function, cond):
             yield label
             total = 0
             for year in range(self.startDate.year, self.endDate.year):
@@ -154,8 +154,8 @@ class DeptStats(Report):
                  lambda p, year: cond(p,year) and p.isInternationalCollaboration()))
         writer.closeSheet()
 
-    def listHR(self, writer, sheetname: str, dept: SubStructure = None):
-        def yieldTitle(dept: SubStructure=None):
+    def listHR(self, writer, sheetname: str, dept: Structure = None):
+        def yieldTitle(dept: Structure=None):
             yield dept.halId if dept is not None else self.lab.name
             yield self.startDate.year
             yield self.endDate.year
@@ -164,8 +164,8 @@ class DeptStats(Report):
             #        yield "local Promos"
             yield "Ext. Recruits"
 
-        def yieldHR(dept: SubStructure, label, function, condition,
-                     reference=None):  # reference only useful in case of ratio
+        def yieldHR(dept: Structure, label, function, condition,
+                    reference=None):  # reference only useful in case of ratio
             yield label
             result = _computeFunction(self.startDate, dept, function, condition, reference)
             yield result
@@ -187,15 +187,15 @@ class DeptStats(Report):
         writer.closeSheet()
 
 
-    def listTutellesHR(self, writer, sheetname: str, dept: SubStructure = None):
-        def yieldTitle(dept: SubStructure=None):
+    def listTutellesHR(self, writer, sheetname: str, dept: Structure = None):
+        def yieldTitle(dept: Structure=None):
             yield dept.halId if dept is not None else self.lab.name
             for t in self.lab.getTutelles():
                 #           yield t+' '+str(self.startDate.year)
                 yield t  # +' '+str(self.endDate.year)
                 #           yield t+' Delta'
 
-        def _yieldTutellesHR(dept: SubStructure, label, function, condition,
+        def _yieldTutellesHR(dept: Structure, label, function, condition,
                              reference=None):  # reference only usefull in case of ratio
             yield label
             for t in self.lab.getTutelles():
@@ -218,15 +218,15 @@ class DeptStats(Report):
             writer.writeln(_yieldTutellesHR(dept, * args))
         writer.closeSheet()
 
-    def listTeamsHR(self, writer, sheetname: str, dept: SubStructure = None):
+    def listTeamsHR(self, writer, sheetname: str, dept: Structure = None):
         teams = self.lab.getTeams(dept)
-        def yieldTitle(dept: SubStructure=None):
+        def yieldTitle(dept: Structure=None):
             yield dept.halId if dept is not None else self.lab.name
             for t in teams:
                 yield t
 
-        def yieldHR(dept: SubStructure, label, function, condition,
-                             reference=None):  # reference only usefull in case of ratio
+        def yieldHR(dept: Structure, label, function, condition,
+                    reference=None):  # reference only usefull in case of ratio
             yield label
             for t in teams:
                 def _cond(m, d1, d2): return condition(m, d1, d2) and m.isInTeam(t, d1, d2)
@@ -248,8 +248,8 @@ class DeptStats(Report):
             writer.writeln(yieldHR(dept, * args))
         writer.closeSheet()
 
-    def listContracts(self, writer, sheetname: str, dept: SubStructure = None):
-        def yieldDeptYearlyProd(dept: SubStructure, label: str, function, cond):
+    def listContracts(self, writer, sheetname: str, dept: Structure = None):
+        def yieldDeptYearlyProd(dept: Structure, label: str, function, cond):
             yield label
             total = 0
             for year in range(self.startDate.year, self.endDate.year):

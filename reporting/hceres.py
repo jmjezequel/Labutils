@@ -4,7 +4,7 @@ import os
 import shutil
 from datetime import datetime
 
-from lab.lab import Lab, SubStructure
+from lab.lab import Lab, Structure
 from reporting.utils import ratio, dateIsWithin, Report
 
 
@@ -42,6 +42,7 @@ class EvalHCERES(Report):
             32 :("... in English or another foreign language", self.tpubs, lambda p: p.isEditedBook() and p.isInternationalAudience()),
             33 :("Book chapters (total number)", self.tpubs, lambda p: p.isBookChapter()),
             34 :("... chapters in English or another foreign language", self.tpubs, lambda p: p.isBookChapter() and p.isInternationalAudience()),
+            35 :("Edited theses", self.tpubs, lambda p: p.isThesis()),
             36 :("3- Production in conferences / congresses and research seminars",),
             38 :("Articles published in conference proceedings ", self.tpubs, lambda p: p.isConference()),
             39 :("Other products presented in symposia", self.tpubs, lambda p: p.isInvited()),
@@ -50,18 +51,18 @@ class EvalHCERES(Report):
             42 :("Databases",None,None),
             61 :("International (outside Europe) grants - coordination", self.tcontracts, lambda c: c.isKindWithRole(True, "Programmes internationaux")),
             62 :("International (outside Europe) grants - partnership", self.tcontracts, lambda c: c.isKindWithRole(False, "Programmes internationaux")),
-            63 :("ERC grants - coordination", self.tcontracts, lambda c: c.isKindWithRole(True, "Grants ERC")),
-            64 :("ERC grants - partnership", self.tcontracts, lambda c: c.isKindWithRole(False, "Grants ERC")),
-            65 :("Other European grants - coordination", self.tcontracts, lambda c: c.isKindWithRole(True, "Programmes Européens hors ERC")),
-            66 :("Other European grants - partnership", self.tcontracts, lambda c: c.isKindWithRole(False, "Programmes Européens hors ERC")),
-            67 :("National public grants (ANR, PHRC, FUI, INCA, etc.) - coordination", self.tcontracts, lambda c: c.isKindWithRole(True, "Appels à projet ANR","Autres financements sur appels à projets nationaux du MESR")),
-            68 :("National public grants (ANR, PHRC, FUI, INCA, etc.) - partnership", self.tcontracts, lambda c: c.isKindWithRole(False, "Appels à projet ANR","Autres financements sur appels à projets nationaux du MESR")),
-            69 :("PIA (labex, equipex etc.) grants - coordination", self.tcontracts, lambda c: c.isKindWithRole(True, "Programmes Investissements d'Avenir")),
-            70 :("PIA (labex, equipex etc.) grants - partnership", self.tcontracts, lambda c: c.isKindWithRole(False, "Programmes Investissements d'Avenir")),
-            71 :("Local grants (collectivités territoriales) - coordination", self.tcontracts, lambda c: c.isKindWithRole(True, "Collectivités territoriales")),
-            72 :("Local grants (collectivités territoriales) - partnership", self.tcontracts, lambda c: c.isKindWithRole(False, "Collectivités territoriales")),
-            73 :("Grants from foundations and charities - coordination", self.tcontracts, lambda c: c.isKindWithRole(True, "Fondations associations caritatives, Institut Carnot, RTRA, RTRS")),
-            74 :("Grants from foundations and charities - partnership", self.tcontracts, lambda c: c.isKindWithRole(False, "Fondations, associations caritatives, Institut Carnot, RTRA, RTRS")),
+            63 :("ERC grants - coordination", self.tcontracts, lambda c: c.isKindWithRole(True, "ERC")),
+            64 :("ERC grants - partnership", self.tcontracts, lambda c: c.isKindWithRole(False, "ERC")),
+            65 :("Other European grants - coordination", self.tcontracts, lambda c: c.isKindWithRole(True, "Programmes européens hors ERC et hors fonds structurels","Fonds structurels européens (FEDER, Interreg)")),
+            66 :("Other European grants - partnership", self.tcontracts, lambda c: c.isKindWithRole(False, "Programmes européens hors ERC et hors fonds structurels","Fonds structurels européens (FEDER, Interreg)")),
+            67 :("National public grants (ANR, PHRC, FUI, DGA, etc.) - coordination", self.tcontracts, lambda c: c.isKindWithRole(True, "ANR (hors PIA)","Autres financements publics sur appels à projets")),
+            68 :("National public grants (ANR, PHRC, FUI, DGA, etc.) - partnership", self.tcontracts, lambda c: c.isKindWithRole(False, "ANR (hors PIA)","Autres financements publics sur appels à projets")),
+            69 :("PIA (labex, equipex etc.) grants - coordination", self.tcontracts, lambda c: c.isKindWithRole(True, "Programme Investissement d'Avenir (PIA)","SATT, BPI (financement de l'innovation)")),
+            70 :("PIA (labex, equipex etc.) grants - partnership", self.tcontracts, lambda c: c.isKindWithRole(False, "Programme Investissement d'Avenir (PIA)","SATT, BPI (financement de l'innovation)")),
+            71 :("Local grants (collectivités territoriales) - coordination", self.tcontracts, lambda c: c.isKindWithRole(True, "Collectivités territoriales","Contrat de Plan État-Région")),
+            72 :("Local grants (collectivités territoriales) - partnership", self.tcontracts, lambda c: c.isKindWithRole(False, "Collectivités territoriales","Contrat de Plan État-Région")),
+            73 :("Grants from foundations and charities - coordination", self.tcontracts, lambda c: c.isKindWithRole(True, "Fondations, associations, mécénat")),
+            74 :("Grants from foundations and charities - partnership", self.tcontracts, lambda c: c.isKindWithRole(False, "Fondations, associations, mécénat")),
             75 :("10. Visiting senior scientists and postdoc",),
             76 :("Post-docs (total number)", self.tmembers, lambda m: m.isPostDoc(startDate, endDate)),
             77 :("Foreign post-docs", self.tmembers, lambda m: m.isPostDoc(startDate, endDate) and m.citizenship != 'FRANCE'),
@@ -72,7 +73,7 @@ class EvalHCERES(Report):
             90 :("Invention disclosures",None,None),
             91 :("Filed patents",self.tpatents,alwaysTrue),
             92 :("Accepted patents",self.tpatents,lambda a: a.isAccepted()),
-            93 :("Licenced patents", self.tcontracts, lambda c: c.isKind("Licences d'exploitation des brevets, certificat d'obtention végétale")),
+            93 :("Licenced patents", self.tcontracts, lambda c: c.isKind("Ressources provenant de la propriété intellectuelle (brevets, logiciels, activités commerciales)")),
             94 :("2- Socio-economic interactions",),
             95 :("Industrial and R&D contracts", self.tcontracts, lambda c: c.isKind("Contrats de recherche industriels")),
             96 :("Cifre fellowships", self.tcontracts, lambda c: c.isCifre()),
@@ -113,7 +114,7 @@ class EvalHCERES(Report):
             writer.writeln(self._yieldStructureData(d))
         writer.closeSheet()
 
-    def _yieldStructureData(self, d: SubStructure):
+    def _yieldStructureData(self, d: Structure):
         date = self.endDate
         yield ""
         yield d.getFullName()
@@ -252,7 +253,7 @@ class EvalHCERES(Report):
         writer.editMode = True
         self.genAnnex4forDept(writer,basefilename)
 
-    def genAnnex4forDept(self, writer, basefilename: str, dept: SubStructure=None):
+    def genAnnex4forDept(self, writer, basefilename: str, dept: Structure=None):
         if dept is None:
             filename = basefilename+'.docx'
             publist = self.lab.pubs.getPubRecord()
@@ -322,7 +323,7 @@ class EvalHCERES(Report):
             writer.closeSheet()
         writer.close()
 
-    def genDeptPublicationList(self,writer,basefilename,dept: SubStructure):
+    def genDeptPublicationList(self, writer, basefilename, dept: Structure):
         if dept is None:
             filename = basefilename+'-publications.docx'
             publist = self.lab.pubs.getPubRecord()
@@ -341,7 +342,7 @@ class EvalHCERES(Report):
         writer.close()
 
 
-    def listStaff(self,writer,sheetname: str, dept: SubStructure = None):
+    def listStaff(self, writer, sheetname: str, dept: Structure = None):
         writer.openSheet(sheetname,'table')
         writer.writeTitle(("Staff",self.endDate.date(),self.endContract.date()))
         for label, cond in self.SynthStaffLines.items():

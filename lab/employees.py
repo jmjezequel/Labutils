@@ -5,6 +5,7 @@ import unicodedata
 import logging
 from dataclasses import dataclass
 from typing import Dict, List
+
 from libhal import hal
 
 
@@ -37,7 +38,7 @@ class Diploma:
     place: str = ''
 
 
-class Status():
+class Status:
     def __init__(self, team: str, d: str, category: str, bap:str):
         self.team = team
         self.dept = d
@@ -48,6 +49,13 @@ class Status():
         if self.__class__ != other.__class__:
             return False
         return self.__dict__ == other.__dict__
+
+    def isMatching(self, startDate: datetime, endDate: datetime, struct, cond=alwaysTrue):
+        """Whether this status matches struct for the period and the condition cond"""
+        if not struct.hasStructId(self.dept):
+            return False
+        within = endDate >= self.startStructure and startDate <= self.endStructure
+        return within and cond(self)
 
     def isAmong(self, *categories):
         return self.category in categories
@@ -66,25 +74,25 @@ class Status():
 
     def get(self, key):
         result = getattr(self, key, '')
-        return result if result != None else ''
+        return result if result is not None else ''
 
     def getForContractDate(self, key, date=None):
         ''' return value of key for date, or '' if does not exist for this date'''
         return self._getForDate(key, self.startContract, self.endContract, date)
 
     def getForStructDate(self, key, date=None):
-        ''' return value of key for date, or '' if does not exist for this date'''
+        """ return value of key for date, or '' if does not exist for this date"""
         return self._getForDate(key, self.startStructure, self.endStructure, date)
 
     def _getForDate(self, key, startDate, endDate, date):
-        ''' return value of key for date, or '' if does not exist for this date'''
+        """ return value of key for date, or '' if does not exist for this date"""
         result = self.get(key)
-        if date == None or date >= startDate and date <= endDate:
+        if date is None or startDate <= date <= endDate:
             return result
         return ''
 
     def getDuration(self):
-        ''' return a datetime.timedelta object storing the duration in this status'''
+        """ return a datetime.timedelta object storing the duration in this status"""
         return self.endContract - self.startContract
 
 
@@ -119,7 +127,7 @@ class Person:
 
     def getRawPubList(self, startYear: int, endYear: int):
         """return the list of raw publications for the period, under the form of a list of dict"""
-        return hal.getPubByAuthor(None, '"' + self.getName() + '"', startYear, endYear)
+        return hal.getPubByAuthor(self.lab.halId, '"' + self.getName() + '"', startYear, endYear)
 
     def getPhDRawPubList(self):
         """return the list of raw publications for the period, under the form of a list of dict"""
@@ -130,17 +138,28 @@ class Person:
         startYear = start.year
         return self.getRawPubList(startYear,startYear+4)
 
-    def hasStatus(self, status, first, last=None):
-        ''' return whether this person has has this status (as a function) at some point over the period first...last'''
-        if last == None:
-            last = first
+    def hasStatusMatching(self, first: datetime, last: datetime, struct, cond):
+        """ return whether this person has has this condition cond for one of her status at some point over the
+        period first...last """
+        if struct is None: struct = self.lab
+        if last is None: last = first
+        s : Status
         for s in self.career:
-            if status(s) and s.endContract>=first and s.startContract<=last:
-                return True
+            if s.isMatching(first,last,struct,cond): return True
+        return False
+
+    def isInCategories(self, first: datetime, last: datetime, struct, * categories):
+        """ return whether this person has has this condition cond for one of her status at some point over the
+        period first...last """
+        if struct is None: struct = self.lab
+        if last is None: last = first
+        s : Status
+        for s in self.career:
+            if s.isAmong(* categories) and s.isMatching(first,last,struct): return True
         return False
 
     def hasBeen(self, first, last, * status):
-        ''' return whether this person has had one these status at some point over the period first...last'''
+        """ return whether this person has had one these status at some point over the period first...last"""
         if last is None:
             last = first
         for s in self.career:
@@ -149,10 +168,10 @@ class Person:
         return False
 
     def get(self, key, date=None, statusCondition=alwaysTrue):
-        ''' return first valid value of key at date date respecting statusCondition. 
+        """ return first valid value of key at date date respecting statusCondition.
         career are stored in reverse order of endStructure (see cleanUp) so most recent is first here
         if date==None, does not care of dates
-        if not, search based on strutureDates'''
+        if not, search based on strutureDates"""
         for a in filter(statusCondition,self.career):
             v = a.getForStructDate(key,date)
             if v != '':
@@ -171,16 +190,16 @@ class Person:
                     longest = a.getDuration()
         return result
 
-    def getStartDate(self):
+    def getStartDate(self, cond=alwaysTrue):
         result = datetime.today()
-        for a in self.career:
+        for a in filter(cond,self.career):
             if a.startContract < result:
                 result = a.startContract
         return result
 
-    def getEndDate(self):
+    def getEndDate(self, cond=alwaysTrue):
         result = dt(1)
-        for a in self.career:
+        for a in filter(cond,self.career):
             if a.endContract > result:
                 result = a.endContract
         return result
@@ -198,16 +217,17 @@ class Person:
         return master.place if master is not None else ""
     
     def isMember(self, first, last, struct=None):
-        ''' whether this person was in struct: SubStructure (or in None, the lab) at some point over the period first...last'''
+        """ whether this person was in struct: SubStructure (or in None, the lab) at some point over the period
+        first...last """
         for a in self.career:
             within = a.endStructure>=first and a.startStructure<=last
             if within and (struct is None or a.getForStructDate('dept') == struct.halId):
                 return True 
         return False
 
-    
     def isPersonnel4HCERES(self, first, last):
-        ''' whether this person should be listed in "3.1 Liste des personnels" for the HCERES report for the period firstYear...lastYear'''
+        """ whether this person should be listed in "3.1 Liste des personnels" for the HCERES report for the period
+        firstYear...lastYear """
         return self.isMember(first, last) and not (self.isShortTermVisitor(124) or self.isPhDStudent(first, last))
 #         for a in self.career:
 #             if not a.isAmong(DOCTORANT) and a.endContract>=first and a.startContract<=last and a.endContract-a.startContract>datetime.timedelta(124):
@@ -215,15 +235,15 @@ class Person:
 #         return False
      
     def isEmployeeOf(self, first, last, * employers):
-        ''' return whether this person has been hired by employer at some point over the period first...last'''
-        return self.hasStatus(lambda s: s.get('employer') in employers, first, last)
+        """ return whether this person has been hired by employer at some point over the period first...last"""
+        return self.hasStatusMatching(first, last, None, lambda s: s.get('employer') in employers)
     
     def isVisitingScientist(self, first, last=None):
-        ''' return whether this person has been a Visiting Scientits at some point over the period first...last'''
+        """ return whether this person has been a Visiting Scientits at some point over the period first...last"""
         return self.hasBeen(first, last, CHINVITE)
     
     def isIntern(self, first, last=None):
-        ''' return whether this person has been an Intern at some point over the period first...last'''
+        """ return whether this person has been an Intern at some point over the period first...last"""
         return self.hasBeen(first, last, STAGIAIRE)
     
     def isEmeritus(self, first, last=None):
@@ -326,15 +346,15 @@ class Person:
 
     def isResearchEngineer(self, first, last=None):
         ''' return whether this person has been a ResearchEngineer at some point over the period first...last'''
-        return self.hasStatus(lambda s: s.isAmong('IR','IE','AI') and s.bap=='E', first, last)
+        return self.hasStatusMatching(first, last, None, lambda s: s.isAmong('IR', 'IE', 'AI') and s.bap == 'E')
 
     def isContractEngineer(self, first, last=None):
         ''' return whether this person has been a ResearchEngineer at some point over the period first...last'''
-        return self.hasStatus(lambda s: s.isAmong(CT) and s.bap=='E', first, last)
+        return self.hasStatusMatching(first, last, None, lambda s: s.isAmong(CT) and s.bap == 'E')
 
     def isITA(self, first, last=None):
         ''' return whether this person has been a ITA at some point over the period first...last'''
-        return self.hasStatus(lambda s: s.isITA(), first, last)
+        return self.hasStatusMatching(first, last, None, lambda s: s.isITA())
 
     def getCorpsGrade(self, date):
         '''return Corps-grade of this person, excluding her DOCTORANT period'''
@@ -438,9 +458,8 @@ class Person:
             yield math.floor((phd.date-start) / timedelta(days=30)) # duration in months
         yield self.get('devenir')
         yield self.getLongest('financement')
-                
 
-    def addStatus(self,s):
+    def addStatus(self, s:Status):
         if s not in self.career: # avoid duplicates
             self.career.append(s) 
             logging.info(self.getName()+" added as "+s.category+

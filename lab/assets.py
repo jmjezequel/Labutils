@@ -34,7 +34,7 @@ class Contract(Asset):
 
     def isKind(self,*args):
         """ return whether this contract is of HCERES kind in args"""
-        return self.Categorie_HCERES in args
+        return self.Categorie_HCERES2 in args
 
     def isKindWithRole(self,leader: bool,*args):
         """ return whether this contract is of HCERES kind in args with coordination career 'role' """
@@ -51,9 +51,11 @@ class Contract(Asset):
     def isIUF(self): return self.Nom_du_type_de_Programme == 'IUF'
 
     def yieldDetails(self):
+        description = self.Intitule_objet
         # yield self.Acronyme
-        yield self.Intitule_objet
-        yield '('+str(round(self.getAmount()/1000))+' k€)'
+        yield description if description is not None and description != '' else self.Acronyme
+        financeur = self.Organisme_financeur
+        yield '('+financeur+', '+str(round(self.getAmount()/1000))+' k€)'
 
 class IPAsset(Asset):
     """ data from an IP Asset where fields are initialized through a dict"""

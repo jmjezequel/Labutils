@@ -2,7 +2,7 @@ import numbers
 from datetime import datetime
 
 from lab.lab import Lab
-from lab.employees import STATUSTYPES, Person
+from lab.employees import STATUSTYPES, Person, Status
 from reporting.utils import Report
 
 
@@ -16,13 +16,15 @@ class Checker(Report):
             writer.writeTitle(('Nom', 'Prénom', 'Genre', 'Equipe', 'Arrivée', 'Départ', 'Employeur'))
 
             def cond(m: Person):
-                return m.isMember(self.startDate, self.endDate, struct) and \
-                       m.hasBeen(self.startDate, self.endDate, category)
+                return m.isInCategories(self.startDate, self.endDate, struct, category)
+
+            def statusCond(s: Status):
+                return s.isMatching(self.startDate, self.endDate, struct) and s.isAmong(category)
 
             m: Person
             for m in self.lab.yieldMembers(cond):
-                start = m.getStartDate()
-                end = m.getEndDate()
+                start = m.getStartDate(statusCond)
+                end = m.getEndDate(statusCond)
                 writer.writeln((m.lastName,
                                 m.firstName,
                                 m.gender,
