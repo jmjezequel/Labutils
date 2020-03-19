@@ -59,7 +59,7 @@ class Lab:
     def hasStructId(self, id: str):
         """Whether this structure has this id or contains a substructure with this id"""
         if id == self.halId: return True
-        for s in self.getSubStructures():
+        for s in self.getSubStructures().values():
             if s.hasStructId(id): return True
         return False
 

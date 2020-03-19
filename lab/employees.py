@@ -143,7 +143,7 @@ class Person:
         period first...last """
         if struct is None: struct = self.lab
         if last is None: last = first
-        s : Status
+        s: Status
         for s in self.career:
             if s.isMatching(first,last,struct,cond): return True
         return False

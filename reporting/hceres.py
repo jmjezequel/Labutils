@@ -279,7 +279,7 @@ class EvalHCERES(Report):
             ("#Visiting",76,79),  # Means extract lines 75-79 of self.ProdLines
             ("#PhDProd",114,115),
             ("#Training",117,123),
-            ('#Softwares', 41, 42),
+           #  ('#Softwares', 41, 42),
             ("#Contracts",61,74),
             ('#Patents',91,93),
             ('#Transfer',95,97),
