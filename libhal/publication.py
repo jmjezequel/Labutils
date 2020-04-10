@@ -192,7 +192,7 @@ class Publication:
             writer.append(self.getCitationKey(citationStyle),key=True)
         terse = kwargs.get('terse',False)
         writer.append(self.getFormatedAuthors(terse),authors=True)
-        writer.append(self.getTitle()+'. ',title=True)
+        writer.append(self.getTitle(),title=True)
         self._writeSpecifics(writer,terse) # specifics are dealt with in subclassses
         p = self.getPublishers()
         if p != '':
