@@ -5,7 +5,6 @@ import unicodedata
 import logging
 from dataclasses import dataclass
 from typing import Dict, List
-
 from libhal import hal
 
 
@@ -52,8 +51,12 @@ class Status:
 
     def isMatching(self, startDate: datetime, endDate: datetime, struct, cond=alwaysTrue):
         """Whether this status matches struct for the period and the condition cond"""
-        if not struct.hasStructId(self.dept):
-            return False
+        if struct.kind == 'team':
+            if not struct.hasStructId(self.team):
+                return False
+        elif struct.kind == 'dept':
+            if not struct.hasStructId(self.dept):
+                return False
         within = endDate >= self.startStructure and startDate <= self.endStructure
         return within and cond(self)
 
@@ -217,11 +220,11 @@ class Person:
         return master.place if master is not None else ""
     
     def isMember(self, first, last, struct=None):
-        """ whether this person was in struct: SubStructure (or in None, the lab) at some point over the period
+        """ whether this person was in struct: Structure (or in None, the lab) at some point over the period
         first...last """
         for a in self.career:
             within = a.endStructure>=first and a.startStructure<=last
-            if within and (struct is None or a.getForStructDate('dept') == struct.halId):
+            if within and (struct is None or a.getForStructDate(struct.kind) == struct.halId):
                 return True 
         return False
 
@@ -396,9 +399,9 @@ class Person:
         return None
     
     def isInTeam(self, team, first, last, statusCondition=alwaysTrue):
-        '''return this person was in this team at some point during this period'''
+        """return this person was in this team at some point during this period"""
         for a in filter(statusCondition,self.career):
-            if a.getForStructDate('team') == team and a.endStructure>=first and a.startStructure<=last:
+            if a.getForStructDate('team').upper() == team.upper() and a.endStructure>=first and a.startStructure<=last:
                 return True 
         return False
                

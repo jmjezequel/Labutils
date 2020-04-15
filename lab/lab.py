@@ -7,44 +7,75 @@ from lab.employees import *
 class Structure:
     """ the inner structure of a Lab, that typically is the granularity of HCERES evaluation (kind = department,
     axis or team) """
-    def __init__(self, number: int, acronym: str, name: str, halId: str, isSupport = False):
+    def __init__(self, kind: str, number: int, acronym: str, name: str = None, halId: str = None, isSupport = False):
         self.number = number
         self.acronym = acronym
-        self.name = name
-        self.halId = halId
+        self.kind = kind # prefix to hal kind: lab, dept, team.
+        self.name = name if name is not None else acronym
+        self.halId = halId if halId is not None else acronym
         self.isSupport = isSupport
         self.contracts = []  # Not used yet
         self.panels: List[str] = [] # HCERES panel names
         self.mainPubs: List[str] = []  # halId of selected publications
+
+    def getHalKind(self):
+        return self.kind+'StructAcronym'
 
     def getFullName(self):
         return self.name+' ('+self.acronym+')'
 
     def hasStructId(self, id: str):
         """Whether this structure has this id or contains a substructure with this id"""
-        return id == self.halId
+        pass
 
     def addContract(self, contract):
         self.contracts.append(contract)
 
+class LeafStructure(Structure):
+    """ a leaf structure of a Lab, that does not contain any substructures """
+    def __init__(self, kind: str, number: int, acronym: str, name: str = None, halId: str = None, isSupport = False):
+        super().__init__(kind, number, acronym, name, halId, isSupport)
 
-class Lab:
+    def hasStructId(self, id: str):
+        """Whether this structure has this id or contains a substructure with this id"""
+        return id == self.halId
+
+class CompositeStructure(Structure):
+    """ a composite structure of a Lab, that does contain substructures """
+    def __init__(self, kind: str, number: int, acronym: str, name: str = None, halId: str = None, isSupport = False):
+        super().__init__(kind, number, acronym, name, halId, isSupport)
+        self._substructs: Dict[str, Structure] = None
+
+    def hasStructId(self, id: str):
+        """Whether this structure has this id or contains a substructure with this id"""
+        if id == self.halId: return True
+        for s in self.getSubStructures().values():
+            if s.hasStructId(id): return True
+        return False
+
+    def addSubStructure(self, s:Structure):
+        if self._substructs is None:
+            self._substructs = dict()
+        self._substructs[s.halId] = s
+
+    def getSubStructures(self)->Dict[str, Structure]:
+        return self._substructs
+
+
+class Lab(CompositeStructure):
     """A research Lab, made of several substructures and containing members.
-    Typically a UMR in the french system"""
-    def __init__(self, name: str, halstructkind: str):
-        self.name = name
-        self.halId = name
-        self.halstructkind = halstructkind
+    Typically a UMR in the French system"""
+    def __init__(self, number: int, acronym: str, name: str):
+        super().__init__("lab", number, acronym, name)
         self.members = dict() # dict(key,Person)
         self.membersByName = dict() #dict(fullName,person) used s a cache to access members by names
-        self.teams = dict() # dict(teamname, DeptNumber)
+        self._teams = dict() # dict(team halId, LeafStructure)
         self.tutellesENS = []
         self.tutellesEPST = []
         self.tutellesAutres = []
         self.aliasTutelles = dict()
         self.depts: Dict[str, Structure] = dict()  # the key is the halid of the structure
         self.supportServices: Dict[str, Structure] = dict()  # the key is the halid of the structure
-        self._substructs = None
         self.contracts = []
         self.softwares = []
         self.patents = []
@@ -55,13 +86,6 @@ class Lab:
         if self._substructs is None:
             self._substructs = { ** self.depts, ** self.supportServices}
         return self._substructs
-
-    def hasStructId(self, id: str):
-        """Whether this structure has this id or contains a substructure with this id"""
-        if id == self.halId: return True
-        for s in self.getSubStructures().values():
-            if s.hasStructId(id): return True
-        return False
 
     def getTutelleFromAlias(self,alias):
         return None if alias is None else self.aliasTutelles.get(alias.upper(), alias)
@@ -76,19 +100,29 @@ class Lab:
     def getByName(self, firstName: str, lastName: str = '') -> 'Person':
         """ return a person with firstName, lastName. If lastName='' consider fisrtName contains full name"""
         return self.membersByName.get(getFullName(firstName, lastName))
-                               
-    def getDeptOfTeam(self, team):
-        """ return Department of team"""
-        return self.teams.get(team,-1)
 
-    def getTeams(self, dept: Structure=None):
-        if dept is None:
-            return self.teams.keys()
-        result = []
-        for t,d in self.teams.items():
-            if d == dept.number:
-                result.append(t)
-        return result
+    def _setupTeamCache(self):
+        if len(self._teams) == 0:  # fill the cache by exploring sub struct for teams
+            for d in self.getSubStructures().values():
+                for t in d.getSubStructures().values():
+                    self._teams[t.halId] = t
+
+    def getDeptOfTeam(self, teamId: str) -> int:
+        """ return Department number of team"""
+        self._setupTeamCache()
+        team = self._teams.get(teamId)
+        return -1 if team is None else team.number
+
+    def getTeamByName(self, teamId:str) -> Structure:
+        """ return team structure of halid teamId"""
+        self._setupTeamCache()
+        return self._teams.get(teamId)
+
+    def getTeams(self, dept: CompositeStructure = None):
+        self._setupTeamCache()
+        if dept is None or dept == self:
+            return self._teams.keys()
+        return dept.getSubStructures().keys()
 
     def getDeptPanel(self,dept):
         return self.panels.get(dept)
@@ -100,7 +134,7 @@ class Lab:
         depts = [0] * (len(self.depts)+1)
         for team in teams:
             d = self.getDeptOfTeam(team)
-            if d>=0:
+            if d >= 0:
                 depts[d] += 1
                 if depts[d] > 0:
                     return True
@@ -117,7 +151,7 @@ class Lab:
         teams = pub.getTeams()
         if len(teams)>1:
             for t in teams:
-                if self.getDeptOfTeam(t) < 0: # unknown team, assumed to be foreign
+                if self.getDeptOfTeam(t) < 0:  # unknown team, assumed to be foreign
                     return True
         depts = pub.getDepts()
         if len(depts)>1:
@@ -188,6 +222,7 @@ class Lab:
         """ return how many members are selected by condition"""
         result = 0
         for m in filter(condition,self.members.values()):
+            # print(m.getName(),m.get('employer'))
             result += 1
         return result
             

@@ -249,7 +249,7 @@ class EvalHCERES(Report):
             self.genAnnex4forDept(writer,basefilename,d)
             writer.editMode = False
             self.genDeptPublicationList(writer,basefilename,d)
-        logging.info('generating Annex 4 for '+self.lab.name)
+        logging.info('generating Annex 4 for '+self.lab.halId)
         writer.editMode = True
         self.genAnnex4forDept(writer,basefilename)
 
