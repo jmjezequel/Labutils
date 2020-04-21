@@ -31,6 +31,10 @@ class Structure:
     def addContract(self, contract):
         self.contracts.append(contract)
 
+    def getSubStructures(self):
+        return dict()
+
+
 class LeafStructure(Structure):
     """ a leaf structure of a Lab, that does not contain any substructures """
     def __init__(self, kind: str, number: int, acronym: str, name: str = None, halId: str = None, isSupport = False):
@@ -124,8 +128,10 @@ class Lab(CompositeStructure):
             return self._teams.keys()
         return dept.getSubStructures().keys()
 
-    def getDeptPanel(self,dept):
-        return self.panels.get(dept)
+    def getDeptHCERESNumber(self,deptId:str)->str:
+        if deptId in self.depts:
+            return 'E'+str(self.depts[deptId].number)
+        return 'SC'
 
     def isIntraDeptCollab(self, pub):
         teams = pub.getTeams()

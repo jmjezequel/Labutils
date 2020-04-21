@@ -16,7 +16,7 @@ def dt(year):
     return datetime(year,1,1)
 
 def getFullName(* args):
-    """ concatenate args, eg firstName, lastName into "firstName lastName\""""
+    """ concatenate args, eg firstName, lastName into 'firstName lastName'"""
     return ' '.join(str(arg) for arg in args)
 
 CT='CT'                 #  Contrat à durée déterminée (catégorie non précisée)
@@ -39,6 +39,10 @@ class Diploma:
 
 class Status:
     def __init__(self, team: str, d: str, category: str, bap:str):
+        self.endContract = None
+        self.startContract = None
+        self.endStructure = None
+        self.startStructure = None
         self.team = team
         self.dept = d
         self.bap = bap
@@ -182,7 +186,7 @@ class Person:
         return ''
 
     def getLongest(self, key):
-        ''' return longest valid value of key'''
+        """ return longest valid value of key"""
         longest = timedelta(days=0)
         result = ""
         for a in self.career:
@@ -429,7 +433,7 @@ class Person:
         yield 'H' if self.gender == 'M' else 'F'
         yield self.getCorpsGrade(lastDate)
         yield ""
-        yield self.getLongest('dept')
+        yield self.lab.getDeptHCERESNumber(self.getLongest('dept'))
         yield self.birthdate.date() if self.birthdate != None else ''
         yield self.getBAP(lastDate)
         yield "NON" if self.getDateHDR() == "" else str(self.getDateHDR().year)
@@ -446,7 +450,7 @@ class Person:
         yield self.lastName
         yield self.firstName
         yield 'H' if self.gender == 'M' else 'F'
-        yield self.getLongest('dept')
+        yield self.lab.getDeptHCERESNumber(self.getLongest('dept'))
         yield self.getMasterIntitution()
         yield self.get('directeur')
         yield self.get('codirecteur')
@@ -473,8 +477,13 @@ class Person:
 
 
 class PhDStatus(Status):
+    def __init__(self, team: str, d: str, category: str, bap:str):
+        super().__init__(team,d,category,bap)
+        self.devenir = ''
+
     def isPhD(self):
         return True
+
 
 class PermResearcher(Status):
     pass
