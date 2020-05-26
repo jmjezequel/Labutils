@@ -197,6 +197,14 @@ class Person:
                     longest = a.getDuration()
         return result
 
+    def getHighestITAStatus(self):
+        """ return highest ITA status ie IR, IE, AI...  or None if not"""
+        result = None
+        for a in self.career:
+            if a.isITA() and a.isHighier(result):
+                result = a
+        return result
+
     def getStartDate(self, cond=alwaysTrue):
         result = datetime.today()
         for a in filter(cond,self.career):
@@ -373,7 +381,7 @@ class Person:
         first = dt(1)
         last = min(date,self.getEndDate())
         bap = self.get('bap',last)
-        if bap=='S' or bap=='R' or self.isPostDoc(date):
+        if bap is None or bap == 'S' or bap == 'R':
             deptId = self.getDeptId(last)
             if deptId is not None:
                 return self.lab.getSubStructures().get(deptId).panels[0]
@@ -384,7 +392,7 @@ class Person:
         return "" if hdr is None else hdr.date
 
     def getThesisDuration(self):
-        ''' return the Thesis duration in #months, or empty String if none'''
+        """ return the Thesis duration in #months, or empty String if none"""
         phd = self.diplomas.get('PhD')
         if phd is None or phd.date is None or phd.date == "":
             return ""
@@ -497,6 +505,21 @@ class ITAStatus(Status):
     def isITA(self):
         return True
 
+    def isHighier(self, other:'ITAStatus'):
+        if other is None: return True
+        return self.getRank() > other.getRank()
+
+    def getRank(self) -> int:
+        return ITARANKS[self.category]
+
+
+ITARANKS = {
+    'IR': 4,
+    'IE': 3,
+    'AI': 2,
+    'TCH': 1,
+    'AJT': 0,
+}
 
 STATUSTYPES = {
         'PREM':Emeritus,

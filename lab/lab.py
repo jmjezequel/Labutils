@@ -276,12 +276,13 @@ class Lab(CompositeStructure):
         for property in ('members','depts','contracts','softwares','patents'):
             self.savePropertyAsJson(outputDir,property)
 
+
 class LabEncoder(json.JSONEncoder):
     def default(self, obj):
-       if isinstance(obj, datetime):
+        if isinstance(obj, datetime):
             return obj.date().isoformat()
-       if isinstance(obj, Lab):
-            return obj.name
-       return obj.__dict__
+        if isinstance(obj, Lab):
+            return obj.acronym
+        return obj.__dict__
 #       return json.JSONEncoder.default(self, obj)
 
