@@ -2,6 +2,7 @@ import logging
 
 PUBYEAR = 'producedDateY_i'
 PUBMONTH = 'producedDateM_i'
+HALURL = 'https://hal.archives-ouvertes.fr/'
 
 def getSetFrom(iterable):
     if iterable == None:
@@ -154,21 +155,27 @@ class Publication:
     def isEditedBook(self):
         return False
     
-    def getFormatedAuthors(self,abbrev=False):
+    def getFormatedAuthors(self, terse=False, maxTerseNumber=6):
         authors = self.getAuthors()
         count = len(authors)
-        if count==0:
+        if count <= 0:
             return ""
-        if not abbrev:
+        if terse:
+            count = min(count, maxTerseNumber)
+            result = getAbbrevAuthorName(authors[0])
+            for n in range(1,count):
+                result += ', '
+                result += getAbbrevAuthorName(authors[n])
+            if count < len(authors):
+                result += ' et al'
+            return result+'. '
+        else:
             result = authors[0]
             for n in range(1,count):
-                result += ', ' if n<count-1 else ' and '
+                result += ', ' if n < count-1 else ' and '
                 result += authors[n]
             return result+'. '
-#         if nb==1: # only useful when puttin a 'and' before the last author
-#             return getAbbrevAuthorName(authors[0])
-        return ', '.join(getAbbrevAuthorName(a) for a in authors)+'. '
-            
+
     def __iter__(self):
         yield self.getHalId()+':'
         yield self.getFormatedAuthors(True)
@@ -186,9 +193,9 @@ class Publication:
 #         return result
 
     def write(self,writer,citationStyle=None,**kwargs):
-        ''' use writer to output this publication in biblio form. 
-        If key is not known it is interpreted as a function of this instance, e.g. pub.getHalId'''
-        if citationStyle != None:
+        """ use writer to output this publication in biblio form.
+        If citationStyle is not known it is interpreted as a function of this instance, e.g. pub.getHalId"""
+        if citationStyle is not None:
             writer.append(self.getCitationKey(citationStyle),key=True)
         terse = kwargs.get('terse',False)
         writer.append(self.getFormatedAuthors(terse),authors=True)
@@ -197,7 +204,8 @@ class Publication:
         p = self.getPublishers()
         if p != '':
             writer.append(p+', ')    
-        writer.append(MONTH_NAMES[terse][self.getMonth()]+str(self.getYear())+'.')
+        writer.append(MONTH_NAMES[terse][self.getMonth()]+str(self.getYear())+'. ')
+        writer.append(self.getHalId(), href=HALURL+self.getHalId())
 
     def _writeSpecifics(self,writer,terse=False):
         pass
