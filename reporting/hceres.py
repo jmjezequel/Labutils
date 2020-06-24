@@ -11,6 +11,22 @@ from reporting.utils import ratio, dateIsWithin, Report
 def alwaysTrue(* args):
     return True
 
+class Next_Contract_HCERES(Report):
+    def __init__(self, lab: Lab, startDate: datetime):
+        super().__init__(lab,startDate,startDate)
+
+    def listPersonnels(self,name,writer):
+        writer.openSheet(name,'table')
+        writer.setLineNumber(16)
+        for m in self.lab.yieldMembers(lambda p: p.isPersonnel4HCERES(self.startDate, self.startDate)):
+            writer.writeln(m.yieldFieldsForNextContract(self.startDate), insertMode=writer.getCurrentLine()>36)
+        writer.closeSheet()
+
+    def genSheets(self,writer,name):
+        writer.open(name)
+        self.listPersonnels("2.Prévision Personnels",writer)
+        writer.close()
+
 
 class EvalHCERES(Report):
     def __init__(self, lab: Lab, startDate: datetime, endDate: datetime, endContract: datetime):

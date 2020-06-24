@@ -435,7 +435,7 @@ class Person:
   
 # > 4 mois hors doctorants
 # Nom Prénom "H/F" "Corps-grade"    "Type d'emploi(vide)"    "N° dept" "Date de naissance (JJ/MM/AAAA)"    "Panels disciplinaires / Branches d'Activités Profession. (BAP)"    "HDR (OUI/NON)" "Etablissement ou organisme employeur"    "Code UAI de l'établissement ou organisme employeur)"    "Date d'arrivée dans l'unité(MM/AA)"    "Date de départ de l'unité(MM/AA)"       
-    def yieldFields(self,lastDate):
+    def yieldFields(self, lastDate):
         yield self.lastName
         yield self.firstName
         yield 'H' if self.gender == 'M' else 'F'
@@ -445,14 +445,28 @@ class Person:
         yield self.birthdate.date() if self.birthdate != None else ''
         yield self.getBAP(lastDate)
         yield "NON" if self.getDateHDR() == "" else str(self.getDateHDR().year)
-#        yield self.get('employer', None, lambda s: not s.isAmong(DOCTORANT))
+        #        yield self.get('employer', None, lambda s: not s.isAmong(DOCTORANT))
         yield self.get('employer')
         yield ""
         yield self.getStartDate().date()
-        yield "" if self.getEndDate().year==2099 else self.getEndDate().date()
+        yield "" if self.getEndDate().year == 2099 else self.getEndDate().date()
         yield ""
 
-# pour doctorants
+    def yieldFieldsForNextContract(self, lastDate):
+        yield self.lastName
+        yield self.firstName
+        yield 'H' if self.gender == 'M' else 'F'
+        yield self.getCorpsGrade(lastDate)
+        yield ""
+        yield self.lab.getDeptHCERESNumber(self.getLongest('dept'))
+        yield self.birthdate.date() if self.birthdate != None else ''
+        yield self.getBAP(lastDate)
+        yield "NON" if self.getDateHDR() == "" else str(self.getDateHDR().year)
+        yield self.get('employer')
+        yield "N"
+        yield ""
+
+    # pour doctorants
 #Nom    Prénom    "H/F"    "N° dept"    "Établissement ayant délivré le master (ou diplôme équivalent)"    Directeur de thèse    Co-directeur de thèse    "Date de début de thèse(JJ/MM/AAAA)"    "Date de soutenance(JJ/MM/AAAA)"    Durée de la thèse en nombre de mois    "Devenir du doctorant"    "Financement du doctorant"
     def yieldFieldsForPhD(self,lastDate):
         yield self.lastName
