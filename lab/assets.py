@@ -48,14 +48,22 @@ class Contract(Asset):
 
     def isLabcom(self): return self.Nom_du_type_de_Programme == 'Labcom'
 
+    def isOtherIndustry(self): return self.isKind("Contrats de recherche industriels") and not self.isCifre() and not self.isLabcom()
+
     def isIUF(self): return self.Nom_du_type_de_Programme == 'IUF'
 
     def yieldDetails(self):
-        description = self.Intitule_objet
-        # yield self.Acronyme
-        yield description if description is not None and description != '' else self.Acronyme
+        yield self.Acronyme.title()
+        yield '('+self.Acronyme_de_lequipe.capitalize()+')'
         financeur = self.Organisme_financeur
-        yield '('+financeur+', '+str(round(self.getAmount()/1000))+' k€)'
+        if len(financeur) > 3:  # Probably not a TLA
+            financeur = financeur.title()
+        period = str(self.Date_de_debut_prise_deffet.year)+'-'+str(self.Date_de_fin_echeance.year)
+        yield financeur + ' (' + period + ', ' + str(round(self.getAmount() / 1000)) + ' k€)'
+        description = self.Intitule_objet
+        yield description if description is not None and description != '' else ''
+        pgm = self.Nom_du_type_de_Programme
+        yield '('+pgm+')' if pgm is not None and pgm != '' else ''
 
 class IPAsset(Asset):
     """ data from an IP Asset where fields are initialized through a dict"""

@@ -91,7 +91,7 @@ class EvalHCERES(Report):
             92 :("Accepted patents",self.tpatents,lambda a: a.isAccepted()),
             93 :("Licenced patents", self.tcontracts, lambda c: c.isKind("Ressources provenant de la propriété intellectuelle (brevets, logiciels, activités commerciales)")),
             94 :("2- Socio-economic interactions",),
-            95 :("Industrial and R&D contracts", self.tcontracts, lambda c: c.isKind("Contrats de recherche industriels")),
+            95 :("Industrial and R&D contracts", self.tcontracts, lambda c: c.isOtherIndustry()),
             96 :("Cifre fellowships", self.tcontracts, lambda c: c.isCifre()),
             97 :("Creation of labs with private-public partnerships", self.tcontracts, lambda c: c.isLabcom()),
             98 :("Networks and mixed units",None,None),
