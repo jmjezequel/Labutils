@@ -32,6 +32,18 @@ def getAbbrevAuthorName(fullname,sep=' '):
         result += words[n-1] # last name if any
     return result        
 
+
+def _isInterX(set1,set2) -> bool:
+    """Whether the intersection of set1 and set2 has a cardinality > 1"""
+    if len(set1) < 2 or len(set2) < 2:
+        return False
+    count = 0
+    for t in set1:
+        if t.upper() in set2:
+            count += 1
+    return count > 1
+
+
 MONTH_NAMES = {
     False: ['','January ','February ','March ','April ','May ','June ','July ','August ','September ','October ','November ','December '],
     True : ['','Jan. ','Fev. ','Mar. ','Apr. ','May ','Jun. ','Jul. ','Aug. ','Sep. ','Oct. ','Nov. ','Dec. ']
@@ -79,13 +91,22 @@ class Publication:
     def isIntraTeam(self):
         return len(self.getTeams()) == 1
 
+    def isInterTeams(self,teams) -> bool:
+        """Whether this publication involves at least 2 of the teams from teams"""
+        return _isInterX(self._teams,teams)
+
     def getDepts(self):
         return self._depts
 
     def isIntraDept(self):
         return len(self.getDetps()) == 1
 
-    def _getDeptCodes(self,size):
+    def isInterDepts(self,depts) -> bool:
+        """Whether this publication involves at least 2 of the depts from depts"""
+        return _isInterX(self._depts,depts)
+
+    def _getDeptCodes(self,size: int)->str:
+        """return a String made of the 'size' last characters of each dept"""
         result = ''
         for d in self._depts:
             last = len(d)-size

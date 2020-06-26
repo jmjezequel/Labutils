@@ -133,7 +133,7 @@ class DeptStats(Report):
         def yieldDeptYearlyProd(dept: Structure, label: str, function, cond):
             yield label
             total = 0
-            for year in range(self.startDate.year, self.endDate.year):
+            for year in range(self.startDate.year, self.endDate.year+1):
                 result = function(dept, lambda x: cond(x, year))
                 total += result
                 yield result

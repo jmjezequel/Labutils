@@ -139,7 +139,7 @@ class Lab(CompositeStructure):
             return False
         depts = [0] * (len(self.depts)+1)
         for team in teams:
-            d = self.getDeptOfTeam(team)
+            d = self.getDeptOfTeam(team.upper())
             if d >= 0:
                 depts[d] += 1
                 if depts[d] > 0:
@@ -154,18 +154,14 @@ class Lab(CompositeStructure):
         return result > 1
     
     def isInterLabCollab(self, pub): #TODO: find a better heuristic (maybe following affiliation in HAL?)
+        if len(pub.getLabs()) > 1:
+            return True
         teams = pub.getTeams()
-        if len(teams)>1:
+        if len(teams) > 1:
             for t in teams:
-                if self.getDeptOfTeam(t) < 0:  # unknown team, assumed to be foreign
+                if self.getDeptOfTeam(t.upper()) < 0:  # unknown team, assumed to be foreign
                     return True
-        depts = pub.getDepts()
-        if len(depts)>1:
-            for d in depts:
-                if not d in self.depts:  # unknown dept, assumed to be foreign
-                    return True
-        labs = pub.getLabs()
-        return len(labs)>1 #more than one lab
+        return False
 #         for author in pub.getAuthors():
 #             a = unicodedata.normalize('NFKD', author).encode('ascii','ignore').upper()
 #             if self.getByName(a) == None: #unknow, must be international guy
