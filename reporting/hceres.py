@@ -268,6 +268,7 @@ class EvalHCERES(Report):
         logging.info('generating Annex 4 for '+self.lab.halId)
         writer.editMode = True
         self.genAnnex4forDept(writer,basefilename)
+        self.genDeptPublicationList(writer, basefilename, self.lab)
 
     def genAnnex4forDept(self, writer, basefilename: str, dept: Structure=None):
         if dept is None:
@@ -340,7 +341,7 @@ class EvalHCERES(Report):
         writer.close()
 
     def genDeptPublicationList(self, writer, basefilename, dept: Structure):
-        if dept is None:
+        if dept.kind == 'lab':
             filename = basefilename+'-publications.docx'
             publist = self.lab.pubs.getPubRecord()
         else:

@@ -1,6 +1,7 @@
 import json
 import datetime
 import concurrent.futures
+from pathlib import Path
 from tkinter import *
 from tkinter import messagebox
 from tkinter.ttk import *
@@ -50,6 +51,7 @@ class PubSelection(model.Model):
         self.structures = StringVar()
         self.conferences = StringVar()
         self.journals = StringVar()
+        self.saveFormat = StringVar()
         if jsonfilename is None:
             self.reset()
         else:
@@ -66,6 +68,7 @@ class PubSelection(model.Model):
         self.collection.set('')
         self.conferences.set('')
         self.journals.set('')
+        self.saveFormat.set('csv')
 
     def load(self,file):
         self.loadFromDict(json.load(file))
@@ -81,15 +84,20 @@ class PubSelection(model.Model):
             self.collection.set('')
         self.conferences.set(listToString('\n', dict["conferences"]))
         self.journals.set(listToString('\n', dict["journals"]))
-         
+        if "saveFormat" in dict:
+            self.saveFormat.set(dict["saveFormat"])
+        else:
+            self.saveFormat.set('csv')
+
     def save(self,file):
         json.dump(self.getAsDict(), file, sort_keys=True, indent=4)
 
-    def saveResults(self):
+    def saveResults(self, outputDir: str):
         if self.result is not None:
             # writer = availableWriters['csv']
-            writer = availableWriters['docx']
-            name = 'hal' if self.filename == None else self.filename
+            writer = availableWriters[self.saveFormat.get()]
+            writer.setOutputDir(outputDir)
+            name = 'hal' if self.filename is None else self.filename
             self.result.save(name,writer,self.getJournals(),self.getConferences())
         
     def getAsDict(self):
@@ -101,6 +109,7 @@ class PubSelection(model.Model):
         result["collection"] = self.collection.get().strip()
         result["conferences"] = self.getConferences()
         result["journals"] = self.getJournals()
+        result["saveFormat"] = self.saveFormat.get()
         return result
 
     def getJournals(self):
@@ -113,7 +122,9 @@ class PubSelection(model.Model):
 class PubStat(stdapp.StdApp):
     def __init__(self, jsonfilename):
         super().__init__("Publication Statistics from HAL")
+        self.outputDir = None
         self.model = PubSelection(jsonfilename)
+        self.configOptionMenu()
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
 
         topframe = Frame(self.rootwindow)
@@ -157,7 +168,10 @@ class PubStat(stdapp.StdApp):
         self.model.result = None
 
     def saveResults(self):
-        self.model.saveResults()
+        dir = self.chooseDir("Choose a directory for saving the result",self.outputDir)
+        if dir is not None and dir != '':
+            self.model.saveResults(dir)
+            self.outputDir = dir
 
     def showResult(self,futureResult): 
         if self.future is None:
@@ -215,12 +229,29 @@ class PubStat(stdapp.StdApp):
         return "This is a simple Python program to compute publication stats from HAL for different types of structures (teams, departments, labs) on a given period of time for selected venues. Released by Jean-Marc Jezequel on LGPL licence (2019)"
 
     def configOtherMenus(self,menubar):
+        self.optionmenu = Menu(menubar, tearoff=0)
+        menubar.add_cascade(label='Options', menu=self.optionmenu)
+        # optionmenu to be filled when model is ready
+
         self.toolmenu = Menu(menubar, tearoff=0)
         menubar.add_cascade(label='Tools', menu=self.toolmenu)
         self.toolmenu.add_command(label='Get publications from HAL', command=self.getPublis)
- #       self.toolmenu.add_command(label='Show breakdown per venue', command=self.showBreakdown)
         self.toolmenu.add_command(label='Save results', command=self.saveResults)
         self.toolmenu.add_command(label='Clear HAL cache', command=hal.clearCache)
+
+    def configOptionMenu(self):
+        formatmenu = Menu(self.optionmenu, tearoff=0)
+        self.optionmenu.add_cascade(label='Output Format', menu=formatmenu)
+        multiplemenu = Menu(formatmenu, tearoff=0)
+        formatmenu.add_cascade(label='One table per file', menu=multiplemenu)
+        singlemenu = Menu(formatmenu, tearoff=0)
+        formatmenu.add_cascade(label='All in one File', menu=singlemenu)
+        for format, writer in availableWriters.items():
+            if writer.multiSheetOutput:
+                singlemenu.add_radiobutton(label=format, variable=self.model.saveFormat)
+            else:
+                multiplemenu.add_radiobutton(label=format, variable=self.model.saveFormat)
+
 
     def configHelpMenu(self,menubar):
         super().configHelpMenu(menubar)

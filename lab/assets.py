@@ -50,7 +50,10 @@ class Contract(Asset):
 
     def isOtherIndustry(self): return self.isKind("Contrats de recherche industriels") and not self.isCifre() and not self.isLabcom()
 
-    def isIUF(self): return self.Nom_du_type_de_Programme == 'IUF'
+    def isIUF(self):
+        # if self.Nom_du_type_de_Programme == 'IUF':
+        #     print(self.Acronyme,self.Departement_scientifique,self.Intitule_objet)
+        return self.Nom_du_type_de_Programme == 'IUF'
 
     def yieldDetails(self):
         yield self.Acronyme.title()

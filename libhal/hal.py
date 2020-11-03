@@ -267,7 +267,7 @@ class StructPubRecords:
         yield "Total"
 
     def yieldScores(self, struct, condition):
-        yield struct
+        yield struct.replace('"','')
         for d in range(self.startYear,self.endYear+1):
             yield str(self.getStructScore(struct, d, condition))
         yield str(self.getStructTotal(struct, condition))
@@ -282,44 +282,47 @@ class StructPubRecords:
     def yieldStructureNames(self):
         yield str(self.startYear)+"-"+str(self.endYear)
         for s in self.structs:
-            yield s
+            yield s.replace('"','')
         
     def writeScorePerYear(self, writer, journals, conferences):
-        condition = lambda pub: filterPubByVenues(pub,journals,conferences)
-        writer.openSheet("ScorePerYear",'table')
-        writer.writeTitle(self.yieldDates())
-        for t in self.structs.keys():
-            writer.writeln(self.yieldScores(t,condition))
-        writer.writeln(self.yieldConsolidatedScore(condition))
-        writer.closeSheet()
+        if writer.isSupporting('table'):
+            condition = lambda pub: filterPubByVenues(pub,journals,conferences)
+            writer.openSheet("ScorePerYear",'table')
+            writer.writeTitle(self.yieldDates())
+            for t in self.structs.keys():
+                writer.writeln(self.yieldScores(t,condition))
+            writer.writeln(self.yieldConsolidatedScore(condition))
+            writer.closeSheet()
 
     def yieldScoreForVenue(self, venueKind, venueName):
         """ yield how many publications by struct do match venueName"""
-        yield venueName
+        yield venueKind+'s' if venueName == '*' else venueName
         for s in self.structs:
             yield str(self.structs[s].getTotalScore(lambda pub: filterByVenue(pub,venueKind,venueName)))
 
     def writeBreakdownPerVenue(self, writer, journals, conferences):
-        writer.openSheet("BreakdownPerVenue",'table')
-        writer.writeTitle(self.yieldStructureNames())
-        for venue in journals:
-            writer.writeln(self.yieldScoreForVenue('journal',venue))
-        for venue in conferences:
-            writer.writeln(self.yieldScoreForVenue('conference',venue))
-        writer.closeSheet()
+        if writer.isSupporting('table'):
+            writer.openSheet("BreakdownPerVenue",'table')
+            writer.writeTitle(self.yieldStructureNames())
+            for venue in journals:
+                writer.writeln(self.yieldScoreForVenue('journal',venue))
+            for venue in conferences:
+                writer.writeln(self.yieldScoreForVenue('conference',venue))
+            writer.closeSheet()
               
     def writePubList(self,writer, journals, conferences):
-        condition = lambda pub: filterPubByVenues(pub,journals,conferences)
-        for pubRecord in self.structs.values():
-            writer.openSheet(pubRecord.name)
-            pubRecord.writePubList(writer,condition)
-            writer.closeSheet()
+        if writer.isSupporting('bibliography'):
+            condition = lambda pub: filterPubByVenues(pub,journals,conferences)
+            for pubRecord in self.structs.values():
+                writer.openSheet(pubRecord.name,'bibliography')
+                pubRecord.writePubList(writer,condition)
+                writer.closeSheet()
     
     def save(self, name, writer, journals, conferences, *args): #arg is a function of self
         ''' write results for eg writePubList, writeScorePerVenue, writeScorePerYear'''
         writer.open(name)
         if len(args) == 0: # save all
-            args = (self.writePubList,self.writeBreakdownPerVenue,self.writeScorePerYear)
+            args = (self.writeScorePerYear,self.writeBreakdownPerVenue,self.writePubList)
         for f in args:
             f(writer,journals,conferences)
         writer.close()
